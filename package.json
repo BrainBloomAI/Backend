@@ -1,0 +1,28 @@
+{
+  "name": "bbai-backend",
+  "version": "1.0.0",
+  "description": "Backend express server for BrainBloomAI game targeted for PWID clients of MINDS in Singapore. Made for Dell InnovateFest 2024 competition.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Prakhar Trivedi",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.7",
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "fs": "^0.0.1-security",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.11.0",
+    "prompt-sync": "^4.2.0",
+    "sequelize": "^6.37.3",
+    "sqlite3": "^5.1.7",
+    "uuid": "^10.0.0",
+    "uuidv4": "^6.2.13",
+    "yup": "^1.4.0"
+  }
+}
