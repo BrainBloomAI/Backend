@@ -9,10 +9,46 @@ const Logger = require('../services/Logger');
  */
 module.exports = (sequelize, DataTypes) => {
     const User = sequelize.define('User', {
-        id: {
+        userID: {
             type: DataTypes.STRING,
             allowNull: false,
             primaryKey: true
+        },
+        username: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        email: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        password: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        role: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            validate: {
+                isIn: [['standard', 'staff']]
+            }
+        },
+        created: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        lastLogin: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        authToken: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        banned: {
+            type: DataTypes.BOOLEAN,
+            allowNull: true,
+            defaultValue: false
         }
     }, { tableName: 'users' });
 
