@@ -2,7 +2,7 @@ require('./services/BootCheck').check()
 const express = require('express');
 const cors = require('cors');
 const db = require('./models');
-const { User } = db;
+const { User, Scenario } = db;
 const { Encryption } = require('./services');
 require('dotenv').config()
 
@@ -72,6 +72,26 @@ if (config["routerRegistration"] != "automated") {
 
 async function onDBSynchronise() {
     // SQL-reliant service setup
+    if (!await Scenario.findOne({ where: { name: "Retail" }})) {
+        Scenario.create({
+            scenarioID: Universal.generateUniqueID(),
+            name: "Retail",
+            backgroundImage: "retail.png",
+            description: "Retail stores are very commonplace. Whenever you need to buy some groceries or food, you may encounter interactions. This scenario is designed to simulate the interactions between a customer and a cashier.",
+            created: new Date().toISOString()
+        })
+    }
+
+    if (!await Scenario.findOne({ where: { name: "Cafetaria" }})) {
+        Scenario.create({
+            scenarioID: Universal.generateUniqueID(),
+            name: "Cafetaria",
+            backgroundImage: "cafetaria.png",
+            description: "Cafetarias are places where you can buy food and drinks. This scenario is designed to simulate the interactions between a customer and a cashier.",
+            created: new Date().toISOString()
+        })
+    }
+
     if (process.env.DEBUG_MODE === "True") { }
 }
 
