@@ -53,9 +53,13 @@ module.exports = (sequelize, DataTypes) => {
     }, { tableName: 'users' });
 
     // Associations
-    // User.associate = (models) => {
-        
-    // }
+    User.associate = (models) => {
+        User.hasMany(models.Game, {
+            foreignKey: 'userID',
+            as: 'playedGames',
+            onDelete: 'cascade'
+        })
+    }
 
     // User.hook = (models) => {
         

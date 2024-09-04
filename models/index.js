@@ -1,5 +1,5 @@
 'use strict';
-
+const util = require('util');
 const fs = require('fs');
 const path = require('path');
 const Sequelize = require('sequelize');
@@ -68,26 +68,28 @@ const db = {};
 
 // Hard-import models
 db.User = require('./User')(sequelize, Sequelize.DataTypes);
+db.Scenario = require('./Scenario')(sequelize, Sequelize.DataTypes);
+db.Game = require('./Game')(sequelize, Sequelize.DataTypes);
 
 // Auto-detect and import other models (intellisense will not work for these models)
-fs
-    .readdirSync(__dirname)
-    .filter(file => {
-        return (
-            file.indexOf('.') !== 0 &&
-            file !== basename &&
-            file.slice(-3) === '.js' &&
-            file.indexOf('.test.js') === -1 &&
-            !ignoredFiles.includes(file)
-        );
-    })
-    .forEach(file => {
-        const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
-        // Add model if model not hard-imported
-        if (db[model.name] == undefined) {
-            db[model.name] = model;
-        }
-    });
+// fs
+//     .readdirSync(__dirname)
+//     .filter(file => {
+//         return (
+//             file.indexOf('.') !== 0 &&
+//             file !== basename &&
+//             file.slice(-3) === '.js' &&
+//             file.indexOf('.test.js') === -1 &&
+//             !ignoredFiles.includes(file)
+//         );
+//     })
+//     .forEach(file => {
+//         const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
+//         // Add model if model not hard-imported
+//         if (db[model.name] == undefined) {
+//             db[model.name] = model;
+//         }
+//     });
 
 Object.keys(db).forEach(modelName => {
     if (db[modelName].associate) {

@@ -35,7 +35,7 @@ router.post('/new', async (req, res) => {
             userID: uuidv4(),
             username: validatedData.username,
             email: validatedData.email,
-            password: Encryption.hash(validatedData.password),
+            password: await Encryption.hash(validatedData.password),
             role: validatedData.role,
             lastLogin: new Date().toISOString(),
             authToken: Universal.generateUniqueID(10, allUsers.map(u => u.authToken)),
