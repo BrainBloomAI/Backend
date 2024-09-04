@@ -73,7 +73,7 @@ if (config["routerRegistration"] != "automated") {
 async function onDBSynchronise() {
     // SQL-reliant service setup
     if (!await Scenario.findOne({ where: { name: "Retail" }})) {
-        Scenario.create({
+        await Scenario.create({
             scenarioID: Universal.generateUniqueID(),
             name: "Retail",
             backgroundImage: "retail.png",
@@ -83,7 +83,7 @@ async function onDBSynchronise() {
     }
 
     if (!await Scenario.findOne({ where: { name: "Cafetaria" }})) {
-        Scenario.create({
+        await Scenario.create({
             scenarioID: Universal.generateUniqueID(),
             name: "Cafetaria",
             backgroundImage: "cafetaria.png",
