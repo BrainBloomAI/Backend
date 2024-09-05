@@ -1,6 +1,6 @@
 const { default: OpenAI } = require('openai');
 const Cache = require('./Cache');
-require('dotenv').config();
+require('dotenv').config()
 
 /**
  * OpenAIChat is a class that provides a simple interface to OpenAI's Chat API.
@@ -51,7 +51,10 @@ class OpenAIChat {
 
     static appContext() {
         return [
-            
+            {
+                role: "system",
+                content: "You are a helpful assistant simulating real-life scenarios for people with intellectual disabilities."
+            }
         ]
     }
 
@@ -129,8 +132,89 @@ class OpenAIChat {
             return `ERROR: Failed to run prompt. Error: ${err}`
         }
     }
+
+    static async generateScript(prompt) {
+        const response = await this.prompt(prompt, true);
+        return response.content.trim().split("\n");
+    }
+
+    static async evaluateResponse(userResponse, expectedResponse) {
+        const prompt = `Given the user response:\n"${userResponse}"\nAnd the expected response:\n"${expectedResponse}"\nEvaluate if the user response is appropriate for the scenario. Provide a yes or no answer.`;
+        const evaluation = await this.prompt(prompt);
+        return evaluation.content.toLowerCase().includes("yes");
+    }
+
+    // temp function to get user input form console
+    // static async getUserInput(promptText) {
+    //     return new Promise((resolve) => {
+    //         this.r1.question(promptText, (answer) => {
+    //             resolve(answer);
+    //         });
+    //     });
+    // }
+
+    // static async scenarioRunner() {
+    //     // Generate the interaction script
+    //     const script = await this.generateScript("Generate a realistic interaction between a customer and a retail worker. Each should say 3 lines, starting with the customer.");
+        
+    //     // Start the count
+    //     while (scriptIndex < script.length) {
+    //         if (scriptIndex % 2 === 0) {
+    //             // Send the character's line
+    //             console.log('Customer: ${script[scriptIndex]}');
+    //         } else {
+    //             // Get user's response
+    //             const expectedResponse = script[scriptIndex];
+
+    //             const timer = new Promise((resolve) => {
+    //                 setTimeout(() => {
+    //                     resolve("User took too long to respond.");
+    //                 }, 10000); // 10 seconds
+    //             });
+
+    //             const userInputPromise = this.getUserInput('Retail Worker (you): ');
+    //             const userResponse = await Promise.race([timer, userInputPromise]);
+
+    //             if (userResponse === "User took too long to respond.") {
+    //                 console.log('Suggested Response: ${expectedResponse}');
+    //                 continue;
+    //             }
+
+
+    //             // Check if the user's answer makes sense
+    //             const isValid = await this.evaluateResponse(userResponse, expectedResponse);
+    //             if (!isValid) {
+    //                 // Ask to re-enter the appropriate response
+    //                 console.log("That response doesn't seem right.\nSuggested Response: ${expectedResponse}");
+    //                 const retryResponse = await this.getUserInput("Try again: ");
+    //                 const isRetryValid = await this.evaluateResponse(retryResponse, expectedResponse);
+    //                 if (!isRetryValid) {
+    //                     // If still invalid response, the ideal response is used for them
+    //                     console.log('Invalid Response. Using Suggested Response: ${expectedResponse}');
+    //                 } else {
+    //                     script[scriptIndex] = retryResponse;
+    //                 }
+    //             } else {
+    //                 script[scriptIndex] = userResponse;
+    //             }
+    //         }
+    //         scriptIndex++;
+    //     }
+
+    //     console.log("Interaction complete.");
+    //     this.r1.close();
+    // }
 }
 
+// (async () => {
+//     const initialisationResult = await OpenAIChat.initialise();
+//     if (!initialisationResult) {
+//         console.log("Failed to initialize OpenAIChat.");
+//         process.exit();
+//     }
 
+//     console.log("Scenario selected: Retail Worker interacting with a customer");
+//     await OpenAIChat.scenarioRetailWorker();
+// })();
 
 module.exports = OpenAIChat;
