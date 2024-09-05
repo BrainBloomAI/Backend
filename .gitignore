@@ -6,3 +6,4 @@ logs.txt
 cache.json
 sqlQueries.txt
 package-lock.json
+database.sqlite
