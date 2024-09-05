@@ -20,6 +20,11 @@ module.exports = (sequelize, DataTypes) => {
             validate: {
                 isIn: [['user', 'system']]
             }
+        },
+        attemptsCount: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
         }
     }, { tableName: 'gameDialogues' });
 
@@ -28,6 +33,12 @@ module.exports = (sequelize, DataTypes) => {
         GameDialogue.belongsTo(models.Game, {
             foreignKey: 'gameID',
             as: 'game'
+        })
+
+        GameDialogue.hasMany(models.DialogueAttempt, {
+            foreignKey: 'dialogueID',
+            as: 'attempts',
+            onDelete: 'cascade'
         })
     }
 

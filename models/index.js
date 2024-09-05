@@ -71,6 +71,7 @@ db.User = require('./User')(sequelize, Sequelize.DataTypes);
 db.Scenario = require('./Scenario')(sequelize, Sequelize.DataTypes);
 db.Game = require('./Game')(sequelize, Sequelize.DataTypes);
 db.GameDialogue = require('./GameDialogue')(sequelize, Sequelize.DataTypes);
+db.DialogueAttempt = require('./DialogueAttempt')(sequelize, Sequelize.DataTypes);
 
 // Auto-detect and import other models (intellisense will not work for these models)
 // fs
