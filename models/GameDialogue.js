@@ -14,24 +14,12 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
             primaryKey: true
         },
-        content: {
-            type: DataTypes.TEXT,
-            allowNull: false
-        },
         by: {
             type: DataTypes.STRING,
             allowNull: false,
             validate: {
                 isIn: [['user', 'system']]
             }
-        },
-        responseDuration: {
-            type: DataTypes.DOUBLE,
-            allowNull: false
-        },
-        responseTimestamp: {
-            type: DataTypes.STRING,
-            allowNull: false
         }
     }, { tableName: 'gameDialogues' });
 
