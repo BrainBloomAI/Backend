@@ -8,6 +8,7 @@ const FileOps = require('./FileOps');
 const HTMLRenderer = require('./HTMLRenderer');
 const Logger = require('./Logger');
 const Universal = require('./Universal');
+const OpenAIChat = require('./OpenAIChat');
 
 const services = {
     BootCheck,
@@ -17,7 +18,8 @@ const services = {
     FileOps,
     HTMLRenderer,
     Logger,
-    Universal
+    Universal,
+    OpenAIChat
 };
 
 fs.readdirSync(__dirname)
