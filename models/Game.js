@@ -41,6 +41,11 @@ module.exports = (sequelize, DataTypes) => {
             as: 'dialogues',
             onDelete: 'cascade'
         })
+
+        Game.belongsTo(models.GameEvaluation, {
+            foreignKey: 'associatedGameID',
+            as: 'evaluation'
+        })
     }
 
     // Game.hook = (models) => {
