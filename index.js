@@ -92,7 +92,24 @@ async function onDBSynchronise() {
         })
     }
 
-    if (process.env.DEBUG_MODE === "True") { }
+    if (process.env.DEBUG_MODE === "True") {
+        Universal.data = {
+            "scenarioPrompts": {
+                "Retail": [
+                    "Hey! How are you doing today?",
+                    "There's a discount on the tomatoes if you get 3 or more. Would you like to get some?",
+                    "Would you like to pay by card or cash?",
+                    "Do you need a bag for your items?"
+                ],
+                "Cafetaria": [
+                    "Hi! What's your name?",
+                    "Nice to meet you! Where are you from?",
+                    "What would you like to order?",
+                    "Would you like to pay by card or cash?",
+                ]
+            }
+        }
+    }
 }
 
 // Server initialisation with sequelize sync

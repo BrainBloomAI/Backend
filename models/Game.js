@@ -35,6 +35,12 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: "userID",
             as: "user"
         })
+
+        Game.hasMany(models.GameDialogue, {
+            foreignKey: 'gameID',
+            as: 'dialogues',
+            onDelete: 'cascade'
+        })
     }
 
     // Game.hook = (models) => {
