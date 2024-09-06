@@ -1,4 +1,4 @@
-# API Documentation
+# API and Setup Documentation
 This is the API documentation for all endpoints offered by the BrainBloomAI backend server.
 
 BrainBloomAI Backend is a Express-based API server to create the logic and functionality for BrainBloomAI games and customers.
