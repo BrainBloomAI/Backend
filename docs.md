@@ -17,9 +17,84 @@ Table of Contents:
 # System Configuration
 
 Setup requirements for server:
-- `config/config.json` - File which can store multiple configurations for the server to use. System behaviour can be manipulated by changing values in this file. For standard operation, simply duplicate the `config/boilerplateConfig.json` file and rename it to `config/config.json`. You may need to change database connection information however. [See specific database configuration information here (reference to secondary project, only read relevant information)](https://github.com/MakanMatch/Backend/blob/main/ConfiguringSystem.md)
+- `config/config.json` - File which can store multiple configurations for the server to use. System behaviour can be manipulated by changing values in this file. For standard operation, simply duplicate the `config/boilerplateConfig.json` file and rename it to `config/config.json`. You may need to change database connection information however. See [database configuration section](#database-configuration).
 - `.env` - Stores environment variables for the server to use. These include dials to control the operation of certain parts of the system as well as sensitive information such as API keys. A `.env.example` has been provided for you to quickly fill in values for variables.
 - `Node.js and NPM` - Ensure you have Node.js on your system. Run `npm install` to install all dependencies.
+
+## Database Configuration
+
+You can use the following configuration template (or alternatively copy from `boilerplateConfig.json`) to add/update configurations in your `config.json`.
+
+```json
+{
+    "development": {
+        "username": "root", // required (MySQL mode)
+        "password": null, // required (MySQL mode)
+        "database": "database_development", // required (MySQL mode)
+        "host": "127.0.0.1", // required (MySQL mode)
+        "dialect": "mysql", // required ('mysql', 'sqlite')
+        "logging": true, // optional, default: console.log
+        "loggingOptions": { // optional
+            "logsFile": "sqlQueries.txt", // optional, default: 'sqlQueries.txt'. SQL query executions will be logged in this file if 'useFileLogging' is to true.
+            "useFileLogging": false, // optional, default: false. Set to true to log SQL queries to file.
+            "logPostBootOnly": false, // optional, default: false. Set to true to log SQL queries only after the system has booted.
+            "clearUponBoot": false // optional, default: false. Set to true to clear the SQL query logs file upon boot.
+        },
+        "routeLogging": false, // optional, default: false. Set to true to log all incoming requests in the console.
+        "routerRegistration": "manual" // optional, default: 'manual'. Set to 'automated' to automatically detect and register routes. Requires automated route export syntax.
+    }
+}
+```
+
+There's a few ways you can configure the database the backend system uses.
+
+`DB_MODE` is a mandatory `.env` variable that needs to be set.
+
+Database Modes:
+- MySQL (`mysql`)
+    - Set `DB_MODE` to `mysql` in `.env` file
+    - Store your configuration details in `config/config.json`. You can rename and use `boilerplateConfig.json`.
+    - You can create multiple configurations and switch between them by changing `DB_CONFIG` in `.env` file.
+- Sqlite (`sqlite`)
+    - Set `DB_MODE` to `sqlite` in `.env` file
+    - `database.sqlite` file will be auto-created in root directory and used
+
+### MySQL Mode
+
+For each configuration, you need to provide:
+- `username`
+- `password`
+- `database`
+- `host`
+- `dialect` (mysql)
+
+Example configurations in `config/config.json`:
+```json
+{
+    "rds": {
+        "username": "AWSRelationalDatabaseServiceUser",
+        "password": "password",
+        "database": "mydatabase",
+        "host": "mydatabase.x.us-east-1.rds.amazonaws.com",
+        "dialect": "mysql"
+    },
+    "local": {
+        "username": "root",
+        "password": "password",
+        "database": "mydatabase",
+        "host": "localhost",
+        "dialect": "mysql"
+    }
+}
+```
+
+Select your configuration by changing `DB_CONFIG` in `.env` file. For example, if I wanted the system to use my local MySQL server, I would set `DB_CONFIG=local`. Otherwise, if I wanted to use an AWS RDS instance, I would set `DB_CONFIG=rds`.
+
+The value is the same as the key of your configuration in `config/config.json`.
+
+### Sqlite Mode
+
+No configuration is needed for Sqlite mode. The system will automatically create a `database.sqlite` file in the root directory and use it.
 
 # Database Schemas
 
