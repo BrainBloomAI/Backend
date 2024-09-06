@@ -231,4 +231,217 @@ Sample success response:
 
 Authorisation required: YES
 
-Both staff and account owners can access this endpoint.
+Both staff and account owners can access this endpoint. Staff can access all games, and can also filter by user. Account owners can only access their own games, and can also choose to just see their active game.
+
+All possible body fields:
+- `targetUsername` - Only if you have staff privileges. Filters games by the user's username. Not providing this field will show all games.
+- `activeGame` - Only for standard users. If set to `true`, will only show the user's active game. Will return an error message if there is no game currently active. If set to `false`, will show all of the user's games.
+- `gameID` - Only for standard users. If set, will show the game with the specified ID. If not set, will show all games.
+- `includeDialogues` - For all users. If set to `true`, will include all dialogues for each game. Default is `false`.
+
+Sample request body for staff:
+```json
+{
+    "targetUsername": "johndoe"
+}
+```
+
+Sample request body for standard users:
+```json
+{
+    "activeGame": true,
+    "includeDialogues": true
+}
+```
+
+Sample success body for standard users when showing active game with include dialogues enabled:
+```json
+{
+	"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
+	"startedTimestamp": "2024-09-06T14:47:44.434Z",
+	"status": "ongoing",
+	"userID": "f7eadd26-6922-4db0-a628-08d5c2afb49b",
+	"scenarioID": "39b4db53-4a1a-4c02-bf2e-46a260268500",
+	"dialogues": [
+		{
+			"dialogueID": "137dc223-84c4-47b4-8d73-85dccdaf4cab",
+			"by": "system",
+			"attemptsCount": 1,
+			"successful": false,
+			"createdTimestamp": "2024-09-06T14:47:44.439Z",
+			"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
+			"attempts": [
+				{
+					"attemptID": "7833c27a-eb51-46a4-8b4d-38bec3a914e3",
+					"attemptNumber": 1,
+					"content": "Hi! What's your name?",
+					"successful": true,
+					"timestamp": "2024-09-06T14:47:44.441Z",
+					"timeTaken": 0,
+					"dialogueID": "137dc223-84c4-47b4-8d73-85dccdaf4cab"
+				}
+			]
+		},
+		{
+			"dialogueID": "9b562ede-7480-4616-b143-e174a3dfb981",
+			"by": "user",
+			"attemptsCount": 1,
+			"successful": true,
+			"createdTimestamp": "2024-09-06T14:47:46.501Z",
+			"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
+			"attempts": [
+				{
+					"attemptID": "e3a3618b-e7af-4f9e-9868-0286dd7d0081",
+					"attemptNumber": 1,
+					"content": "my name is john!",
+					"successful": true,
+					"timestamp": "2024-09-06T14:47:46.503Z",
+					"timeTaken": 10,
+					"dialogueID": "9b562ede-7480-4616-b143-e174a3dfb981"
+				}
+			]
+		},
+		{
+			"dialogueID": "cd066915-6813-475d-9117-5abd59cc39f5",
+			"by": "system",
+			"attemptsCount": 1,
+			"successful": false,
+			"createdTimestamp": "2024-09-06T14:47:46.510Z",
+			"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
+			"attempts": [
+				{
+					"attemptID": "450c05bd-5bc2-4e37-838a-ea24552a9dfc",
+					"attemptNumber": 1,
+					"content": "Nice to meet you! Where are you from?",
+					"successful": true,
+					"timestamp": "2024-09-06T14:47:46.512Z",
+					"timeTaken": 0,
+					"dialogueID": "cd066915-6813-475d-9117-5abd59cc39f5"
+				}
+			]
+		}
+	]
+}
+```
+
+Without include dialogues:
+```json
+{
+	"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
+	"startedTimestamp": "2024-09-06T14:47:44.434Z",
+	"status": "ongoing",
+	"userID": "f7eadd26-6922-4db0-a628-08d5c2afb49b",
+	"scenarioID": "39b4db53-4a1a-4c02-bf2e-46a260268500"
+}
+```
+
+## POST `/game/new`
+
+Authorisation required: YES, Standard only.
+
+If there's already an active game, you must abandon it first before creating a new one.
+
+Required fields:
+- `scenarioID` - ID of the scenario to start a new game in. Can be used instead of `scenarioName`.
+- `scenarioName` - Name of the scenario to start a new game in. Can be used instead of `scenarioID`.
+
+Sample request body:
+```json
+{
+    "scenarioName": "Cafetaria"
+}
+```
+
+Sample success reponse:
+```json
+{
+	"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
+	"startedTimestamp": "2024-09-06T14:47:44.434Z",
+	"status": "ongoing",
+	"userID": "f7eadd26-6922-4db0-a628-08d5c2afb49b",
+	"scenarioID": "39b4db53-4a1a-4c02-bf2e-46a260268500",
+	"dialogues": [
+		{
+			"dialogueID": "137dc223-84c4-47b4-8d73-85dccdaf4cab",
+			"by": "system",
+			"attemptsCount": 1,
+			"successful": false,
+			"createdTimestamp": "2024-09-06T14:47:44.439Z",
+			"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
+			"attempts": [
+				{
+					"attemptID": "7833c27a-eb51-46a4-8b4d-38bec3a914e3",
+					"attemptNumber": 1,
+					"content": "Hi! What's your name?",
+					"successful": true,
+					"timestamp": "2024-09-06T14:47:44.441Z",
+					"timeTaken": 0,
+					"dialogueID": "137dc223-84c4-47b4-8d73-85dccdaf4cab"
+				}
+			]
+		}
+	]
+}
+```
+
+## POST `/game/abandon`
+
+Authorisation required: YES, Standard only.
+
+No required body fields. Automatically detects active game and abandons it. Abandoned games are still associated with your account, but are just marked as abandoned (`status`).
+
+If no active game is detected, an error message is returned.
+
+Sample success response:
+```
+SUCCESS: Game abandoned.
+```
+
+## POST `/game/newDialogue`
+
+Authorisation required: YES, Standard only.
+
+This endpoint is a bit more complex. Here are the different kinds of situations/types of responses you may encounter:
+- **Re-try prompt:** If the response you provided is inappropriate/irrelevant/inaccurate as deemed by AI, the system will ask you to re-try. The system will provide an AI-generated suggested response you can try as well.
+- **Dialogue success:** If the response you provided was appropriate, the system will move on and provide you the next AI-generated dialogue prompt. (`aiResponse`).
+- **Game complete:** If the system has no more dialogue prompts to provide, the game is marked as complete. It is no longer active. *Each conversation is only 4 AI prompts long.*
+
+Required fields:
+- `content` - Content of the dialogue attempt.
+- `timeTaken` - Time taken to utter the dialogue attempt.
+- `debugSuccess` (TEMPORARY) - Boolean value to force the system to mark the dialogue attempt as successful. Default is `false`.
+
+Sample re-try success response:
+```json
+{
+	"message": "SUCCESS: Great attempt but dialogue unsuccessful. Please retry.",
+	"suggestedAIResponse": "Sample suggested AI response."
+}
+```
+
+Sample dialogue success response:
+```json
+{
+	"message": "SUCCESS: Dialogue successful. Please respond to follow-up AI dialogue.",
+	"aiResponse": {
+		"attemptID": "df717c2b-ab6d-45ba-88f2-7223a506a569",
+		"dialogueID": "0e601637-6ec5-416d-8ec3-06aefdfd0717",
+		"attemptNumber": 1,
+		"content": "What would you like to order?",
+		"successful": true,
+		"timestamp": "2024-09-06T14:59:46.598Z",
+		"timeTaken": 0,
+		"updatedAt": "2024-09-06T14:59:46.598Z",
+		"createdAt": "2024-09-06T14:59:46.598Z"
+	}
+}
+```
+
+Sample game complete response:
+```json
+{
+	"message": "SUCCESS: Conversation complete. Thanks for playing!"
+}
+```
+
+© 2024 BrainBloomAI Team. All rights reserved.
