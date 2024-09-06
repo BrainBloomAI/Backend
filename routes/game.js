@@ -95,6 +95,26 @@ router.get("/", authorise, async (req, res) => {
         return res.status(500).send(`ERROR: Failed to process request.`);
     }
 
+    var staffUser;
+    if (user.role == "staff") {
+        staffUser = user;
+
+        const { targetUserID } = req.body;
+        if (!targetUserID) {
+            return res.status(400).send(`ERROR: One or more required payloads not provided.`);
+        }
+
+        try {
+            user = await User.findByPk(targetUserID);
+            if (!user) {
+                return res.status(404).send(`ERROR: User not found.`);
+            }
+        } catch (err) {
+            Logger.log(`GAME GET ERROR: Failed to fetch target user for staff account with ID '${staffUser.userID}'; error: ${err}`);
+            return res.status(500).send(`ERROR: Failed to process request.`);
+        }
+    }
+
     const { activeGame, gameID, includeDialogues } = req.body;
     if (!activeGame && !gameID) {
         const games = await Game.findAll({
@@ -119,7 +139,7 @@ router.get("/", authorise, async (req, res) => {
 
         const gamesJSON = games.map(game => Extensions.sanitiseData(game.toJSON(), [], ["createdAt", "updatedAt"]));
         return res.send(gamesJSON);
-    } else if (activeGame === true) {
+    } else if (activeGame === true && !staffUser) {
         if (!user.activeGame) {
             return res.status(404).send('ERROR: No active game found.');
         }
@@ -160,12 +180,12 @@ router.post('/new', authorise, async (req, res) => {
         return res.status(500).send(`ERROR: Failed to process request.`);
     }
 
-    if (user.activeGame) {
-        return res.status(403).send(`UERROR: You already have an active game. Abandon the game before starting a new one.`);
-    }
-
     if (user.role !== "standard") {
         return res.status(403).send(`ERROR: Insufficient permissions.`);
+    }
+
+    if (user.activeGame) {
+        return res.status(403).send(`UERROR: You already have an active game. Abandon the game before starting a new one.`);
     }
 
     const { scenarioName, scenarioID } = req.body;
@@ -251,6 +271,10 @@ router.post('/abandon', authorise, async (req, res) => {
         return res.status(500).send(`ERROR: Failed to process request.`);
     }
 
+    if (user.role !== "standard") {
+        return res.status(403).send(`ERROR: Insufficient permissions.`);
+    }
+
     if (!user.activeGame) {
         return res.status(404).send(`ERROR: No active game found.`);
     }
@@ -287,6 +311,10 @@ router.post('/newDialogue', authorise, async (req, res) => {
     } catch (err) {
         Logger.log(`GAME NEWDIALOGUE ERROR: Failed to fetch user; error: ${err}`);
         return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+
+    if (user.role !== "standard") {
+        return res.status(403).send(`ERROR: Insufficient permissions.`);
     }
 
     const { content, timeTaken } = req.body;

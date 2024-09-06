@@ -131,7 +131,6 @@ router.post('/refreshSession', authorise, async (req, res) => {
         await user.save();
 
         Logger.log(`IDENTITY REFRESHSESSION: Session refreshed for ${user.username}`);
-
         return res.status(200).send(`SUCCESS: Session refreshed. Authentication Token: ${user.authToken}`);
     } catch (err) {
         Logger.log(`IDENTITY REFRESHSESSION ERROR: Failed to refresh session; error: ${err}`);
