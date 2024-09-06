@@ -37,7 +37,7 @@ async function getFullGame(gameID, json = false, includeDialogues = false, inclu
                         as: "attempts",
                         order: [["attemptNumber", "ASC"]]
                     }],
-                    order: [["createdAt", "ASC"]]
+                    order: [["createdTimestamp", "ASC"]]
                 })
             }
         }
@@ -90,6 +90,9 @@ router.get("/", authorise, async (req, res) => {
     var user;
     try {
         user = await User.findByPk(req.userID);
+        if (!user) {
+            return res.status(404).send(`ERROR: User not found.`);
+        }
     } catch (err) {
         Logger.log(`GAME GET ERROR: Failed to fetch user; error: ${err}`);
         return res.status(500).send(`ERROR: Failed to process request.`);
@@ -110,7 +113,7 @@ router.get("/", authorise, async (req, res) => {
                     order: [["attemptNumber", "ASC"]]
                 }],
                 order: [["createdAt", "ASC"]]
-            }]: []
+            }] : []
         })
 
         if (!games) {
@@ -155,6 +158,9 @@ router.post('/new', authorise, async (req, res) => {
     var user;
     try {
         user = await User.findByPk(req.userID);
+        if (!user) {
+            return res.status(404).send(`ERROR: User not found.`);
+        }
     } catch (err) {
         Logger.log(`GAME NEW ERROR: Failed to fetch user; error: ${err}`);
         return res.status(500).send(`ERROR: Failed to process request.`);
@@ -217,7 +223,8 @@ router.post('/new', authorise, async (req, res) => {
             dialogueID: Universal.generateUniqueID(),
             gameID: newGame.gameID,
             by: "system",
-            attemptsCount: 1
+            attemptsCount: 1,
+            createdTimestamp: new Date().toISOString()
         })
 
         aiDialogueAttempt = await DialogueAttempt.create({
@@ -239,6 +246,209 @@ router.post('/new', authorise, async (req, res) => {
     return fullGameJSON ?
         res.send(Extensions.sanitiseData(fullGameJSON, [], ["createdAt", "updatedAt"])) :
         res.status(500).send(`ERROR: Failed to process request.`);
+})
+
+router.post('/newDialogue', authorise, async (req, res) => {
+    var user;
+    try {
+        user = await User.findByPk(req.userID);
+        if (!user) {
+            return res.status(404).send(`ERROR: User not found.`);
+        }
+    } catch (err) {
+        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to fetch user; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+
+    const { content, timeTaken } = req.body;
+    if (!content || !timeTaken) {
+        return res.status(400).send(`ERROR: One or more required payloads not provided.`);
+    }
+
+    if (!user.activeGame) {
+        return res.status(404).send(`ERROR: No active game found.`);
+    }
+
+    var game;
+    try {
+        game = await Game.findByPk(user.activeGame, {
+            include: [{
+                model: GameDialogue,
+                as: "dialogues",
+                include: [{
+                    model: DialogueAttempt,
+                    as: "attempts",
+                    order: [["attemptNumber", "ASC"]]
+                }],
+                order: [["createdTimestamp", "ASC"]]
+            },
+            {
+                model: Scenario,
+                as: "scenario"
+            }]
+        });
+        if (!game) {
+            user.activeGame = null;
+            await user.save();
+
+            return res.status(404).send(`ERROR: Game not found.`);
+        }
+    } catch (err) {
+        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to fetch active game; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+
+    // Check if game is ongoing
+    if (game.status !== "ongoing") {
+        user.activeGame = null;
+        await user.save();
+
+        return res.status(403).send(`ERROR: Game is not active.`);
+    }
+
+    // Check if last dialogue is by user
+    var lastDialogue;
+    for (let i = 0; i < game.dialogues.length; i++) {
+        if (!lastDialogue) {
+            lastDialogue = game.dialogues[i];
+        } else if (lastDialogue.createdTimestamp < game.dialogues[i].createdTimestamp) {
+            lastDialogue = game.dialogues[i];
+        }
+    }
+
+    var dialoguesLength = game.dialogues.length;
+    var targetDialogue;
+    try {
+        if (lastDialogue.by == "user" && lastDialogue.successful === true) {
+            Logger.log(`GAME NEWDIALOGUE ERROR: Inconsistent game data (no follow-up system dialogue for ongoing game) detected for game with ID '${game.gameID}', user with ID '${user.userID}.'`);
+            return res.status(500).send(`ERROR: Game data is inconsistent. Please abandon this game and create a new one.`);
+        } else if (lastDialogue.by == "user") {
+            targetDialogue = lastDialogue;
+        } else {
+            targetDialogue = await GameDialogue.create({
+                dialogueID: Universal.generateUniqueID(),
+                gameID: game.gameID,
+                by: "user",
+                attemptsCount: 0,
+                createdTimestamp: new Date().toISOString()
+            })
+            dialoguesLength += 1;
+        }
+    } catch (err) {
+        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to identify/create new dialogue for user with ID '${user.userID}'; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+
+    // Create new dialogue attempt
+    var newAttempt;
+    try {
+        newAttempt = await DialogueAttempt.create({
+            attemptID: Universal.generateUniqueID(),
+            dialogueID: targetDialogue.dialogueID,
+            attemptNumber: targetDialogue.attemptsCount + 1,
+            content: content,
+            successful: false,
+            timestamp: new Date().toISOString(),
+            timeTaken: timeTaken
+        })
+
+        targetDialogue.attemptsCount += 1;
+        await targetDialogue.save();
+    } catch (err) {
+        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to create new dialogue attempt for user with ID '${user.userID}'; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+
+    // Perform AI evaluation of content
+    // Mock data for now
+    const responseMode = req.body.debugSuccess === true ? "success" : "retry"; // "retry" or "success"
+    const suggestedAIResponse = "Sample suggested AI response.";
+
+    // Update attempt information
+    if (responseMode == "success") {
+        try {
+            newAttempt.successful = true;
+            await newAttempt.save();
+
+            targetDialogue.successful = true;
+            await targetDialogue.save();
+
+            // Determine follow-ups if needed based on conversation length
+            if (dialoguesLength == 8) {
+                // Conversation is complete
+                game.status = "complete";
+                await game.save();
+
+                user.activeGame = null;
+                await user.save();
+
+                console.log("convo complete")
+
+                res.send({ message: "SUCCESS: Conversation complete. Thanks for playing!" });
+            } else if (dialoguesLength == 6) {
+                // Generate wrap-up AI follow-up dialogue
+                // Mock data for now
+
+                const aiWrapUpDialogue = await GameDialogue.create({
+                    dialogueID: Universal.generateUniqueID(),
+                    gameID: game.gameID,
+                    by: "system",
+                    attemptsCount: 1,
+                    createdTimestamp: new Date().toISOString()
+                })
+
+                const aiWrapUpAttempt = await DialogueAttempt.create({
+                    attemptID: Universal.generateUniqueID(),
+                    dialogueID: aiWrapUpDialogue.dialogueID,
+                    attemptNumber: 1,
+                    content: Universal.data["scenarioPrompts"][game.scenario.name][3],
+                    successful: true,
+                    timestamp: new Date().toISOString(),
+                    timeTaken: 0.0
+                })
+
+                return res.send({
+                    message: "SUCCESS: Dialogue successful. Please respond to follow-up AI dialogue.",
+                    aiResponse: aiWrapUpAttempt.toJSON()
+                })
+            } else {
+                // Generate AI follow-up dialogue
+                // Mock data for now
+
+                const aiDialogue = await GameDialogue.create({
+                    dialogueID: Universal.generateUniqueID(),
+                    gameID: game.gameID,
+                    by: "system",
+                    attemptsCount: 1,
+                    createdTimestamp: new Date().toISOString()
+                })
+
+                const aiAttempt = await DialogueAttempt.create({
+                    attemptID: Universal.generateUniqueID(),
+                    dialogueID: aiDialogue.dialogueID,
+                    attemptNumber: 1,
+                    content: Universal.data["scenarioPrompts"][game.scenario.name][dialoguesLength / 2],
+                    successful: true,
+                    timestamp: new Date().toISOString(),
+                    timeTaken: 0.0
+                })
+
+                return res.send({
+                    message: "SUCCESS: Dialogue successful. Please respond to follow-up AI dialogue.",
+                    aiResponse: aiAttempt.toJSON()
+                })
+            }
+        } catch (err) {
+            Logger.log(`GAME NEWDIALOGUE ERROR: Failed to update attempt information for user with ID '${user.userID}'; error: ${err}`);
+            return res.status(500).send(`ERROR: Failed to process request.`);
+        }
+    } else {
+        // Prompt client to retry, include suggested AI response for help
+        res.send({
+            message: "SUCCESS: Great attempt but dialogue unsuccessful. Please retry.",
+            suggestedAIResponse: suggestedAIResponse
+        })
+    }
 })
 
 module.exports = { router, at: '/game' };

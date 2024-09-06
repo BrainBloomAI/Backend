@@ -25,6 +25,15 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.INTEGER,
             allowNull: false,
             defaultValue: 0
+        },
+        successful: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false
+        },
+        createdTimestamp: {
+            type: DataTypes.STRING,
+            allowNull: false,
         }
     }, { tableName: 'gameDialogues' });
 
