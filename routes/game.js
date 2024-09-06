@@ -35,7 +35,7 @@ async function getFullGame(gameID, json = false, includeDialogues = false, inclu
                     include: [{
                         model: DialogueAttempt,
                         as: "attempts",
-                        order: [["attemptNumber", "DESC"]]
+                        order: [["attemptNumber", "ASC"]]
                     }],
                     order: [["createdAt", "ASC"]]
                 })
@@ -97,10 +97,29 @@ router.get("/", authorise, async (req, res) => {
 
     const { activeGame, gameID, includeDialogues } = req.body;
     if (!activeGame && !gameID) {
-        return res.status(400).send('ERROR: One or more required payloads not provided.');
-    }
+        const games = await Game.findAll({
+            where: {
+                userID: user.userID
+            },
+            include: includeDialogues === true ? [{
+                model: GameDialogue,
+                as: "dialogues",
+                include: [{
+                    model: DialogueAttempt,
+                    as: "attempts",
+                    order: [["attemptNumber", "ASC"]]
+                }],
+                order: [["createdAt", "ASC"]]
+            }]: []
+        })
 
-    if (activeGame === true) {
+        if (!games) {
+            return res.status(404).send('ERROR: No games found.');
+        }
+
+        const gamesJSON = games.map(game => Extensions.sanitiseData(game.toJSON(), [], ["createdAt", "updatedAt"]));
+        return res.send(gamesJSON);
+    } else if (activeGame === true) {
         if (!user.activeGame) {
             return res.status(404).send('ERROR: No active game found.');
         }
@@ -113,7 +132,7 @@ router.get("/", authorise, async (req, res) => {
         if (fullGame.userID !== user.userID) {
             user.activeGame = null;
             await user.save();
-            
+
             return res.status(403).send('ERROR: Insufficient permissions.');
         }
 
