@@ -1,8 +1,72 @@
 const express = require('express');
 const { Scenario, User, Game, GameDialogue, DialogueAttempt } = require('../models');
-const { Logger, Universal } = require('../services');
+const { Logger, Universal, Extensions } = require('../services');
 const authorise = require('../middleware/auth');
 const router = express.Router();
+
+/**
+ * A function to fetch a full game object with all associated data, including dialogues and attempts.
+ * 
+ * If where clause is provided, it will be used to fetch the game. Otherwise, the gameID will be used.
+ * 
+ * If game is not found, null is returned.
+ * 
+ * @async
+ * @param {string} gameID 
+ * @param {boolean} json 
+ * @param {boolean} includeDialogues 
+ * @param {boolean} includeAttempts 
+ * @param {object} whereClause 
+ * @returns {Promise<object>}
+ */
+async function getFullGame(gameID, json = false, includeDialogues = false, includeAttempts = false, whereClause = null) {
+    try {
+        var includeObject = [];
+        if (includeDialogues) {
+            if (!includeAttempts) {
+                includeObject.push({
+                    model: GameDialogue,
+                    as: "dialogues"
+                })
+            } else {
+                includeObject.push({
+                    model: GameDialogue,
+                    as: "dialogues",
+                    include: [{
+                        model: DialogueAttempt,
+                        as: "attempts",
+                        order: [["attemptNumber", "DESC"]]
+                    }],
+                    order: [["createdAt", "ASC"]]
+                })
+            }
+        }
+
+        var game;
+        if (whereClause != null) {
+            game = await Game.findOne({
+                where: whereClause,
+                include: includeObject
+            })
+        } else {
+            game = await Game.findByPk(gameID, {
+                include: includeObject
+            })
+        }
+
+        if (!game) {
+            return null;
+        }
+
+        if (json) {
+            return game.toJSON();
+        } else {
+            return game;
+        }
+    } catch (err) {
+        return null
+    }
+}
 
 router.get('/scenarios', async (req, res) => {
     try {
@@ -98,8 +162,11 @@ router.post('/new', authorise, async (req, res) => {
         return res.status(500).send(`ERROR: Failed to process request.`);
     }
 
-    console.log(await newGame.getDialogues());
-    res.send("hehe");
+    const fullGameJSON = await getFullGame(newGame.gameID, true, true, true);
+
+    return fullGameJSON ?
+        res.send(Extensions.sanitiseData(fullGameJSON, [], ["createdAt", "updatedAt"])) :
+        res.status(500).send(`ERROR: Failed to process request.`);
 })
 
 module.exports = { router, at: '/game' };
