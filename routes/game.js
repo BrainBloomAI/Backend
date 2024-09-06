@@ -95,19 +95,42 @@ router.get("/", authorise, async (req, res) => {
         return res.status(500).send(`ERROR: Failed to process request.`);
     }
 
+    const { activeGame, gameID, includeDialogues, targetUsername } = req.body;
+
     var staffUser;
     if (user.role == "staff") {
         staffUser = user;
 
-        const { targetUserID } = req.body;
-        if (!targetUserID) {
-            return res.status(400).send(`ERROR: One or more required payloads not provided.`);
+        if (!targetUsername) {
+            const games = await Game.findAll({
+                include: includeDialogues === true ? [{
+                    model: GameDialogue,
+                    as: "dialogues",
+                    include: [{
+                        model: DialogueAttempt,
+                        as: "attempts",
+                        order: [["attemptNumber", "ASC"]]
+                    }],
+                    order: [["createdAt", "ASC"]]
+                }] : []
+            })
+
+            if (!games) {
+                return res.status(404).send('ERROR: No games found.');
+            }
+
+            const gamesJSON = games.map(game => Extensions.sanitiseData(game.toJSON(), [], ["createdAt", "updatedAt"]));
+            return res.send(gamesJSON);
         }
 
         try {
-            user = await User.findByPk(targetUserID);
+            user = await User.findOne({ where: { username: targetUsername } });
             if (!user) {
                 return res.status(404).send(`ERROR: User not found.`);
+            }
+
+            if (user.role !== "standard") {
+                return res.status(400).send(`ERROR: Target user is not a standard user.`);
             }
         } catch (err) {
             Logger.log(`GAME GET ERROR: Failed to fetch target user for staff account with ID '${staffUser.userID}'; error: ${err}`);
@@ -115,7 +138,6 @@ router.get("/", authorise, async (req, res) => {
         }
     }
 
-    const { activeGame, gameID, includeDialogues } = req.body;
     if (!activeGame && !gameID) {
         const games = await Game.findAll({
             where: {
