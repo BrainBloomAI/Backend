@@ -1,5 +1,5 @@
 const express = require('express');
-const { Scenario, User, Game } = require('../models');
+const { Scenario, User, Game, GameDialogue, DialogueAttempt } = require('../models');
 const { Logger, Universal } = require('../services');
 const authorise = require('../middleware/auth');
 const router = express.Router();
@@ -52,8 +52,9 @@ router.post('/new', authorise, async (req, res) => {
         return res.status(500).send(`ERROR: Failed to process request.`);
     }
 
+    var newGame;
     try {
-        const newGame = await Game.create({
+        newGame = await Game.create({
             gameID: Universal.generateUniqueID(),
             scenarioID: targetScenario.scenarioID,
             userID: user.userID,
@@ -72,11 +73,33 @@ router.post('/new', authorise, async (req, res) => {
     const initialPrompt = Universal.data["scenarioPrompts"][targetScenario.name][0];
 
     // Generate initial AI GameDialogue
-    try {
+    var aiDialogue;
+    var aiDialogueAttempt;
 
+    try {
+        aiDialogue = await GameDialogue.create({
+            dialogueID: Universal.generateUniqueID(),
+            gameID: newGame.gameID,
+            by: "system",
+            attemptsCount: 1
+        })
+
+        aiDialogueAttempt = await DialogueAttempt.create({
+            attemptID: Universal.generateUniqueID(),
+            dialogueID: aiDialogue.dialogueID,
+            attemptNumber: 1,
+            content: initialPrompt,
+            successful: true,
+            timestamp: new Date().toISOString(),
+            timeTaken: 0.0
+        })
     } catch (err) {
-        
+        Logger.log(`GAME NEW ERROR: Failed to generate initial AI dialogue; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
     }
+
+    console.log(await newGame.getDialogues());
+    res.send("hehe");
 })
 
 module.exports = { router, at: '/game' };

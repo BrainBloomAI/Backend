@@ -35,7 +35,10 @@ module.exports = (sequelize, DataTypes) => {
     // Associations
     Scenario.associate = (models) => {
         Scenario.hasMany(models.Game, {
-            foreignKey: 'scenarioID',
+            foreignKey: {
+                name: 'scenarioID',
+                allowNull: false
+            },
             as: 'games',
             onDelete: 'cascade'
         })

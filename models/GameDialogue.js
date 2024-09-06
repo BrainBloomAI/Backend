@@ -31,12 +31,15 @@ module.exports = (sequelize, DataTypes) => {
     // Associations
     GameDialogue.associate = (models) => {
         GameDialogue.belongsTo(models.Game, {
-            foreignKey: 'gameID',
+            foreignKey: "gameID",
             as: 'game'
         })
 
         GameDialogue.hasMany(models.DialogueAttempt, {
-            foreignKey: 'dialogueID',
+            foreignKey: {
+                name: "dialogueID",
+                allowNull: false
+            },
             as: 'attempts',
             onDelete: 'cascade'
         })

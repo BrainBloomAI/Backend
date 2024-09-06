@@ -2,7 +2,7 @@ require('./services/BootCheck').check()
 const express = require('express');
 const cors = require('cors');
 const db = require('./models');
-const { User, Scenario } = db;
+const { User, Scenario, Game, GameDialogue, DialogueAttempt } = db;
 const { Encryption } = require('./services');
 require('dotenv').config()
 
@@ -109,6 +109,10 @@ async function onDBSynchronise() {
                 ]
             }
         }
+
+        await Game.destroy({ where: {} })
+        await GameDialogue.destroy({ where: {} })
+        await DialogueAttempt.destroy({ where: {} })
     }
 }
 

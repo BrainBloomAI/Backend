@@ -74,7 +74,7 @@ router.post('/login', async (req, res) => {
             return res.status(404).send(`UERROR: Invalid email or password.`);
         }
 
-        if (!Encryption.compare(password, user.password)) {
+        if (!await Encryption.compare(password, user.password)) {
             return res.status(401).send(`UERROR: Invalid email or password.`);
         }
 

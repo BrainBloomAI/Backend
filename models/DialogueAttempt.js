@@ -39,7 +39,7 @@ module.exports = (sequelize, DataTypes) => {
     // Associations
     DialogueAttempt.associate = (models) => {
         DialogueAttempt.belongsTo(models.GameDialogue, {
-            foreignKey: 'dialogueID',
+            foreignKey: "dialogueID",
             as: 'dialogue'
         })
     }

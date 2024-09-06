@@ -27,8 +27,8 @@ module.exports = (sequelize, DataTypes) => {
     // Associations
     Game.associate = (models) => {
         Game.belongsTo(models.Scenario, {
-            foreignKey: 'scenarioID',
-            as: 'scenario'
+            foreignKey: "scenarioID",
+            as: "scenario"
         })
 
         Game.belongsTo(models.User, {
@@ -37,9 +37,12 @@ module.exports = (sequelize, DataTypes) => {
         })
 
         Game.hasMany(models.GameDialogue, {
-            foreignKey: 'gameID',
-            as: 'dialogues',
-            onDelete: 'cascade'
+            foreignKey: {
+                name: "gameID",
+                allowNull: false
+            },
+            as: "dialogues",
+            onDelete: "cascade"
         })
     }
 
