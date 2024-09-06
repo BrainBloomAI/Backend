@@ -90,9 +90,6 @@ router.get("/", authorise, async (req, res) => {
     var user;
     try {
         user = await User.findByPk(req.userID);
-        if (!user) {
-            return res.status(404).send(`ERROR: User not found.`);
-        }
     } catch (err) {
         Logger.log(`GAME GET ERROR: Failed to fetch user; error: ${err}`);
         return res.status(500).send(`ERROR: Failed to process request.`);
@@ -158,9 +155,6 @@ router.post('/new', authorise, async (req, res) => {
     var user;
     try {
         user = await User.findByPk(req.userID);
-        if (!user) {
-            return res.status(404).send(`ERROR: User not found.`);
-        }
     } catch (err) {
         Logger.log(`GAME NEW ERROR: Failed to fetch user; error: ${err}`);
         return res.status(500).send(`ERROR: Failed to process request.`);
@@ -248,13 +242,48 @@ router.post('/new', authorise, async (req, res) => {
         res.status(500).send(`ERROR: Failed to process request.`);
 })
 
+router.post('/abandon', authorise, async (req, res) => {
+    var user;
+    try {
+        user = await User.findByPk(req.userID);
+    } catch (err) {
+        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to fetch user; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+
+    if (!user.activeGame) {
+        return res.status(404).send(`ERROR: No active game found.`);
+    }
+
+    var game;
+    try {
+        game = await Game.findByPk(user.activeGame);
+        if (!game) {
+            user.activeGame = null;
+            await user.save();
+
+            return res.status(404).send(`ERROR: Game not found.`);
+        } else if (game.userID !== user.userID) {
+            return res.status(403).send(`ERROR: Insufficient permissions.`);
+        }
+
+        user.activeGame = null;
+        await user.save();
+
+        game.status = "abandoned";
+        await game.save();
+
+        return res.send(`SUCCESS: Game abandoned.`);
+    } catch (err) {
+        Logger.log(`GAME ABANDON ERROR: Failed to abandon game for user with ID '${user.userID}'; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+})
+
 router.post('/newDialogue', authorise, async (req, res) => {
     var user;
     try {
         user = await User.findByPk(req.userID);
-        if (!user) {
-            return res.status(404).send(`ERROR: User not found.`);
-        }
     } catch (err) {
         Logger.log(`GAME NEWDIALOGUE ERROR: Failed to fetch user; error: ${err}`);
         return res.status(500).send(`ERROR: Failed to process request.`);
@@ -381,8 +410,6 @@ router.post('/newDialogue', authorise, async (req, res) => {
 
                 user.activeGame = null;
                 await user.save();
-
-                console.log("convo complete")
 
                 res.send({ message: "SUCCESS: Conversation complete. Thanks for playing!" });
             } else if (dialoguesLength == 6) {
