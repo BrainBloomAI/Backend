@@ -133,88 +133,73 @@ class OpenAIChat {
         }
     }
 
-    static async generateScript(prompt) {
-        const response = await this.prompt(prompt, true);
-        return response.content.trim().split("\n");
+
+
+
+
+    // Generate an initial message based on a scenario
+    static async generateInitialMessage(scenario, modelRole) {
+        const prompt = `Generate a realistic opening line spoken by the ${modelRole} in a conversation based on this scenario: ${scenario}.`;
+        return await this.prompt(prompt, true);
     }
 
-    static async evaluateResponse(userResponse, expectedResponse) {
-        const prompt = `Given the user response:\n"${userResponse}"\nAnd the expected response:\n"${expectedResponse}"\nEvaluate if the user response is appropriate for the scenario. Provide a yes or no answer.`;
-        const evaluation = await this.prompt(prompt);
-        return evaluation.content.toLowerCase().includes("yes");
+
+    // Evaluate if the user's response is appropriate and relevant
+    static async evaluateResponse(scenario, conversation, response) {
+        const prompt = `Evaluate if the user's response: "${response}" is both appropriate and relevant to this scenario: "${scenario}", as a response to the last line in the conversation so far: ${JSON.stringify(conversation)}. Respond with a boolean value.`; 
+        const evaluation = await this.prompt(prompt, true);
+        return evaluation.content.trim().toLowerCase() === 'true';
     }
 
-    // temp function to get user input form console
-    // static async getUserInput(promptText) {
-    //     return new Promise((resolve) => {
-    //         this.r1.question(promptText, (answer) => {
-    //             resolve(answer);
-    //         });
-    //     });
-    // }
 
-    // static async scenarioRunner() {
-    //     // Generate the interaction script
-    //     const script = await this.generateScript("Generate a realistic interaction between a customer and a retail worker. Each should say 3 lines, starting with the customer.");
-        
-    //     // Start the count
-    //     while (scriptIndex < script.length) {
-    //         if (scriptIndex % 2 === 0) {
-    //             // Send the character's line
-    //             console.log('Customer: ${script[scriptIndex]}');
-    //         } else {
-    //             // Get user's response
-    //             const expectedResponse = script[scriptIndex];
-
-    //             const timer = new Promise((resolve) => {
-    //                 setTimeout(() => {
-    //                     resolve("User took too long to respond.");
-    //                 }, 10000); // 10 seconds
-    //             });
-
-    //             const userInputPromise = this.getUserInput('Retail Worker (you): ');
-    //             const userResponse = await Promise.race([timer, userInputPromise]);
-
-    //             if (userResponse === "User took too long to respond.") {
-    //                 console.log('Suggested Response: ${expectedResponse}');
-    //                 continue;
-    //             }
+    // Generate an ideal response to the last message
+    static async generateIdealResponse(scenario, conversation, userRole, modelRole) {
+        const prompt = `Given the scenario: "${scenario}" and the following conversation: ${JSON.stringify(conversation)}, generate the ideal response to the last thing said by the ${modelRole}, that should be said by the ${userRole}.`;
+        return await this.prompt(prompt, true, conversation);
+    }
 
 
-    //             // Check if the user's answer makes sense
-    //             const isValid = await this.evaluateResponse(userResponse, expectedResponse);
-    //             if (!isValid) {
-    //                 // Ask to re-enter the appropriate response
-    //                 console.log("That response doesn't seem right.\nSuggested Response: ${expectedResponse}");
-    //                 const retryResponse = await this.getUserInput("Try again: ");
-    //                 const isRetryValid = await this.evaluateResponse(retryResponse, expectedResponse);
-    //                 if (!isRetryValid) {
-    //                     // If still invalid response, the ideal response is used for them
-    //                     console.log('Invalid Response. Using Suggested Response: ${expectedResponse}');
-    //                 } else {
-    //                     script[scriptIndex] = retryResponse;
-    //                 }
-    //             } else {
-    //                 script[scriptIndex] = userResponse;
-    //             }
-    //         }
-    //         scriptIndex++;
-    //     }
+    // Generate the next message in conversation based on user's response
+    static async generateNextMessage(scenario, conversation, modelRole) {
+        const prompt = `Considering this scenario: "${scenario}" and the current conversation: ${JSON.stringify(conversation)}, generate the next message that should be spoken by the ${modelRole}.`;
+        return await this.prompt(prompt, true, conversation);
+    }
 
-    //     console.log("Interaction complete.");
-    //     this.r1.close();
-    // }
+
+    // Check if the response is similar to the ideal response
+    static async checkResponseSimilarity(response, idealResponse) {
+        const prompt = `Compare the user's response: "${response}" with the ideal response: "${idealResponse}". Provide a similarity score between 0 and 100, where 100 is the closest match.`;
+        const similarityScore = await this.prompt(prompt, true);
+        return parseInt(similarityScore.content, 10) > 75;
+    }
+
+
+    // Generating the final message to wrap up the conversation
+    static async generateFinalMessage(scenario, conversation, modelRole) {
+        const prompt = `Based on the scenario: "${scenario}" and the conversation so far: ${JSON.stringify(conversation)}, generate a final message from the ${modelRole} to conclude the conversation in a nice and friendly manner.`;
+        return await this.prompt(prompt, true, conversation);
+    }
+
+
+    // Final evaluation for the conversation based on metrics
+    static async evaluateConversation(conversation, userRole) {
+        const prompt = `Evaluate this conversation: ${JSON.stringify(conversation)} based on the responses of the ${userRole}. Evaluate the user on:
+            1. Listening/Comprehension
+            2. Emotional Intelligence (EQ)
+            3. Tone appropriateness
+            4. Helpfulness
+            5. Clarity
+        Respond with percentage scores for each metric and provide both a short and long description of the evaluation.`;
+
+        return await this.prompt(prompt, true);
+    }
+
+
+
+    
+
 }
 
-// (async () => {
-//     const initialisationResult = await OpenAIChat.initialise();
-//     if (!initialisationResult) {
-//         console.log("Failed to initialize OpenAIChat.");
-//         process.exit();
-//     }
 
-//     console.log("Scenario selected: Retail Worker interacting with a customer");
-//     await OpenAIChat.scenarioRetailWorker();
-// })();
 
 module.exports = OpenAIChat;
