@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: true
         },
         tone: {
-            type: DataTypes.STRING,
+            type: DataTypes.DOUBLE,
             allowNull: true
         },
         helpfulness: {
