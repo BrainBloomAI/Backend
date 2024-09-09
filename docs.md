@@ -12,6 +12,7 @@ Table of Contents:
 - [Database Schemas](#database-schemas)
 - [Authentication Flow](#authentication-flow)
 - [Identity Management](#identity-management)
+- [Staff Management](#staff-management)
 - [Game Management](#game-management)
 
 # System Configuration
@@ -117,6 +118,8 @@ Note that responses may not always have the full schema of the object. Based on 
 - `name` - Name of the scenario.
 - `description` - Description of the scenario.
 - `backgroundImage` - Name of the background image. Use this to interpolate into `${SERVERURL}/public/img/${backgroundImage}` to get the full URL.
+- `modelRole` - Role of the AI model in the scenario. Helps AI get a perspective when generating dialogues.
+- `userRole` - Role of the user in the scenario. Helps AI get a perspective when responding to dialogues.
 - `created` - ISO datetime string of scenario creation date.
 
 `Game`:
@@ -260,6 +263,127 @@ Sample request body for staff:
 Sample success response:
 ```
 SUCCESS: Account deleted.
+```
+
+# Staff Management
+
+Accounts with staff privilieges (`role` = `'staff'`) can carry out actions like key in MINDS evaluation metrics in client profiles and more. Keying in further evaluation data helps digitise the evaluation data, personalise the client's game experience and allow for more accurate evaluation of client progress.
+
+Aside the endpoints below, staff can also delete client accounts with a POST request to `/identity/delete` ([see this](#post-identitydelete)). Staff can access game data as well; [see this.](#get-game)
+
+## POST `/staff/viewClients`
+
+Authorisation required: YES, Staff only.
+
+No required body fields. Retrieves all clients in the system and their respective data, including MINDS evaluation metrics.
+
+Sample success response:
+```json
+[
+	{
+		"userID": "4005c2f4-f0d9-43e6-b0c8-4ef389c189ed",
+		"username": "someuser",
+		"email": "email@example.com",
+		"created": "2024-09-09T09:34:09.029Z",
+		"lastLogin": "2024-09-09T10:21:01.662Z",
+		"activeGame": null,
+		"mindsListening": 40,
+		"mindsEQ": 30,
+		"mindsTone": 90,
+		"mindsHelpfulness": 80,
+		"mindsClarity": 60,
+		"mindsAssessment": "Good listener, but needs to work on clarity and tone.",
+		"banned": false
+	}
+]
+```
+
+## POST `/staff/banClient`
+
+Authorisation required: YES, Staff only.
+
+Required fields:
+- `targetUsername` - Username of the standard account to ban.
+
+Sample request body:
+```json
+{
+	"targetUsername": "someuser"
+}
+```
+
+Sample success response:
+```
+SUCCESS: Client banned.
+```
+
+## POST `/staff/unbanClient`
+
+Authorisation required: YES, Staff only.
+
+Required fields:
+- `targetUsername` - Username of the standard account to unban.
+
+Sample request body:
+```json
+{
+	"targetUsername": "someuser"
+}
+```
+
+Sample success response:
+```
+SUCCESS: Client unbanned.
+```
+
+## POST `/staff/updateMindsEvaluation`
+
+Authorisation required: YES, Staff only.
+
+Required fields:
+- `targetUsername` - Username of the standard account to update.
+- `listening` - Listening metric. Must be a double value between 0 and 100.
+- `eq` - Emotional intelligence metric. Must be a double value between 0 and 100.
+- `tone` - Tone metric. Must be a double value between 0 and 100.
+- `helpfulness` - Helpfulness metric. Must be a double value between 0 and 100.
+- `clarity` - Clarity metric. Must be a double value between 0 and 100.
+- `assessment` - Assessment of the client. Must be a string.
+
+Sample request body:
+```json
+{
+	"targetUsername": "someuser",
+	"listening": 40,
+	"eq": 30,
+	"tone": 90,
+	"helpfulness": 80,
+	"clarity": 60,
+	"assessment": "Good listener, but needs to work on clarity and tone."
+}
+```
+
+Sample success response:
+```
+SUCCESS: MINDS evaluation updated.
+```
+
+## POST `/staff/removeEvaluation`
+
+Authorisation required: YES, Staff only.
+
+Required fields:
+- `targetUsername` - Username of the standard account to remove evaluation data from.
+
+Sample request body:
+```json
+{
+	"targetUsername": "someuser"
+}
+```
+
+Sample success response:
+```
+SUCCESS: MINDS evaluation removed.
 ```
 
 # Game Management

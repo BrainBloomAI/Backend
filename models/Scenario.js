@@ -26,6 +26,14 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: false
         },
+        modelRole: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        userRole: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
         created: {
             type: DataTypes.STRING,
             allowNull: false

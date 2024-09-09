@@ -72,22 +72,26 @@ if (config["routerRegistration"] != "automated") {
 
 async function onDBSynchronise() {
     // SQL-reliant service setup
-    if (!await Scenario.findOne({ where: { name: "Retail" }})) {
+    if (!await Scenario.findOne({ where: { name: "Retail Customer Service" }})) {
         await Scenario.create({
             scenarioID: Universal.generateUniqueID(),
-            name: "Retail",
+            name: "Retail Customer Service",
             backgroundImage: "retail.png",
-            description: "Retail stores are very commonplace. Whenever you need to buy some groceries or food, you may encounter interactions. This scenario is designed to simulate the interactions between a customer and a cashier.",
+            description: "I'll send you later.",
+            modelRole: 'customer',
+            userRole: 'retail worker',
             created: new Date().toISOString()
         })
     }
 
-    if (!await Scenario.findOne({ where: { name: "Cafetaria" }})) {
+    if (!await Scenario.findOne({ where: { name: "Cafetaria Food Order" }})) {
         await Scenario.create({
             scenarioID: Universal.generateUniqueID(),
-            name: "Cafetaria",
+            name: "Cafetaria Food Order",
             backgroundImage: "cafetaria.png",
-            description: "Cafetarias are places where you can buy food and drinks. This scenario is designed to simulate the interactions between a customer and a cashier.",
+            description: "I'll send you later.",
+            modelRole: 'customer',
+            userRole: 'vendor',
             created: new Date().toISOString()
         })
     }
