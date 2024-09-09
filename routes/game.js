@@ -1,7 +1,7 @@
 const express = require('express');
 const { Scenario, User, Game, GameDialogue, DialogueAttempt } = require('../models');
 const { Logger, Universal, Extensions } = require('../services');
-const authorise = require('../middleware/auth');
+const { authorise } = require('../middleware/auth');
 const router = express.Router();
 
 /**

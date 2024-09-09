@@ -3,7 +3,7 @@ const yup = require('yup');
 const { v4: uuidv4 } = require('uuid');
 const { User } = require('../models');
 const { Encryption, Logger, Universal, Extensions } = require('../services');
-const authorise = require('../middleware/auth');
+const { authorise } = require('../middleware/auth');
 
 const router = express.Router();
 
