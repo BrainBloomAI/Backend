@@ -149,7 +149,6 @@ class OpenAIChat {
         Please generate a simple and polite first message that the ${scenario.roles.modelRole} would say in this context to start the conversation.`;
     
         const initialMessage = await OpenAIChat.prompt(prompt, true);
-        console.log(initialMessage);
         return initialMessage;
     }
 
@@ -158,8 +157,6 @@ class OpenAIChat {
         const lastSystemMessage = conversationHistory.conversationLog
             .filter(message => message.by === scenario.roles.modelRole)
             .slice(-1)[0];  // Get the last system message
-
-        console.log(lastSystemMessage);
     
         const prompt = `
             You are role-playing as a ${scenario.roles.userRole} in a ${scenario.description.name} scenario. 
@@ -169,7 +166,6 @@ class OpenAIChat {
         `;
         
         const idealResponse = await OpenAIChat.prompt(prompt, true);
-        console.log(idealResponse);
         return idealResponse;
     }
 
@@ -221,7 +217,7 @@ class OpenAIChat {
         
         const evaluation = await OpenAIChat.prompt(prompt, true);
         console.log(evaluation);
-        return evaluation.trim().toLowerCase() === 'true';
+        return evaluation.content === 'True';
     }
 
 
