@@ -101,7 +101,83 @@ router.get("/", authorise, async (req, res) => {
     if (user.role == "staff") {
         staffUser = user;
 
-        if (!targetUsername) {
+        if (targetUsername) {
+            try {
+                user = await User.findOne({ where: { username: targetUsername } });
+                if (!user) {
+                    return res.status(404).send(`ERROR: User not found.`);
+                }
+
+                if (user.role !== "standard") {
+                    return res.status(400).send(`ERROR: Target user is not a standard user.`);
+                }
+            } catch (err) {
+                Logger.log(`GAME GET ERROR: Failed to fetch target user for staff account with ID '${staffUser.userID}'; error: ${err}`);
+                return res.status(500).send(`ERROR: Failed to process request.`);
+            }
+        } else {
+            user = null;
+        }
+    }
+
+    try {
+        if (gameID) {
+            // Any user requesting specific game
+            const fullGame = await getFullGame(gameID, false, includeDialogues === true, includeDialogues === true);
+            if (!fullGame) {
+                return res.status(404).send('ERROR: Game not found.');
+            }
+
+            if (fullGame.userID !== user.userID && !staffUser) {
+                return res.status(403).send('ERROR: Insufficient permissions.');
+            }
+
+            return res.send(Extensions.sanitiseData(fullGame.toJSON(), [], ["createdAt", "updatedAt"]));
+        } else if (activeGame === true && !staffUser) {
+            // Standard user requesting active game
+            if (!user.activeGame) {
+                return res.status(404).send('ERROR: No active game found.');
+            }
+
+            const fullGame = await getFullGame(user.activeGame, false, includeDialogues === true, includeDialogues === true);
+            if (!fullGame) {
+                return res.status(404).send('ERROR: Game not found.');
+            }
+
+            if (fullGame.userID !== user.userID) {
+                user.activeGame = null;
+                await user.save();
+
+                return res.status(403).send('ERROR: Insufficient permissions.');
+            }
+
+            return res.send(Extensions.sanitiseData(fullGame.toJSON(), [], ["createdAt", "updatedAt"]));
+        } else if (user) {
+            // Standard user requesting all games or staff user requesting all games for a specific user
+            const games = await Game.findAll({
+                where: {
+                    userID: user.userID
+                },
+                include: includeDialogues === true ? [{
+                    model: GameDialogue,
+                    as: "dialogues",
+                    include: [{
+                        model: DialogueAttempt,
+                        as: "attempts",
+                        order: [["attemptNumber", "ASC"]]
+                    }],
+                    order: [["createdAt", "ASC"]]
+                }] : []
+            })
+
+            if (!games) {
+                return res.status(404).send('ERROR: No games found.');
+            }
+
+            const gamesJSON = games.map(game => Extensions.sanitiseData(game.toJSON(), [], ["createdAt", "updatedAt"]));
+            return res.send(gamesJSON);
+        } else if (staffUser) {
+            // Staff user requesting all games
             const games = await Game.findAll({
                 include: includeDialogues === true ? [{
                     model: GameDialogue,
@@ -121,77 +197,12 @@ router.get("/", authorise, async (req, res) => {
 
             const gamesJSON = games.map(game => Extensions.sanitiseData(game.toJSON(), [], ["createdAt", "updatedAt"]));
             return res.send(gamesJSON);
+        } else {
+            return res.status(400).send('ERROR: Abnormal payload provided.')
         }
-
-        try {
-            user = await User.findOne({ where: { username: targetUsername } });
-            if (!user) {
-                return res.status(404).send(`ERROR: User not found.`);
-            }
-
-            if (user.role !== "standard") {
-                return res.status(400).send(`ERROR: Target user is not a standard user.`);
-            }
-        } catch (err) {
-            Logger.log(`GAME GET ERROR: Failed to fetch target user for staff account with ID '${staffUser.userID}'; error: ${err}`);
-            return res.status(500).send(`ERROR: Failed to process request.`);
-        }
-    }
-
-    if (!activeGame && !gameID) {
-        const games = await Game.findAll({
-            where: {
-                userID: user.userID
-            },
-            include: includeDialogues === true ? [{
-                model: GameDialogue,
-                as: "dialogues",
-                include: [{
-                    model: DialogueAttempt,
-                    as: "attempts",
-                    order: [["attemptNumber", "ASC"]]
-                }],
-                order: [["createdAt", "ASC"]]
-            }] : []
-        })
-
-        if (!games) {
-            return res.status(404).send('ERROR: No games found.');
-        }
-
-        const gamesJSON = games.map(game => Extensions.sanitiseData(game.toJSON(), [], ["createdAt", "updatedAt"]));
-        return res.send(gamesJSON);
-    } else if (activeGame === true && !staffUser) {
-        if (!user.activeGame) {
-            return res.status(404).send('ERROR: No active game found.');
-        }
-
-        const fullGame = await getFullGame(user.activeGame, false, includeDialogues === true, includeDialogues === true);
-        if (!fullGame) {
-            return res.status(404).send('ERROR: Game not found.');
-        }
-
-        if (fullGame.userID !== user.userID) {
-            user.activeGame = null;
-            await user.save();
-
-            return res.status(403).send('ERROR: Insufficient permissions.');
-        }
-
-        return res.send(Extensions.sanitiseData(fullGame.toJSON(), [], ["createdAt", "updatedAt"]));
-    } else if (gameID) {
-        const fullGame = await getFullGame(gameID, false, includeDialogues === true, includeDialogues === true);
-        if (!fullGame) {
-            return res.status(404).send('ERROR: Game not found.');
-        }
-
-        if (fullGame.userID !== user.userID) {
-            return res.status(403).send('ERROR: Insufficient permissions.');
-        }
-
-        return res.send(Extensions.sanitiseData(fullGame.toJSON(), [], ["createdAt", "updatedAt"]));
-    } else {
-        return res.status(400).send('ERROR: Abnormal payload provided.')
+    } catch (err) {
+        Logger.log(`GAME GET ERROR: Failed to fetch game(s); error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
     }
 })
 

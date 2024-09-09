@@ -114,10 +114,10 @@ async function onDBSynchronise() {
             }
         }
 
-        await Game.destroy({ where: {} })
-        await GameDialogue.destroy({ where: {} })
-        await DialogueAttempt.destroy({ where: {} })
-        await User.update({ activeGame: null }, { where: {} })
+        // await Game.destroy({ where: {} })
+        // await GameDialogue.destroy({ where: {} })
+        // await DialogueAttempt.destroy({ where: {} })
+        // await User.update({ activeGame: null }, { where: {} })
     }
 }
 
