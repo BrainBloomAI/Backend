@@ -179,7 +179,7 @@ router.get("/", authorise, async (req, res) => {
         }
 
         return res.send(Extensions.sanitiseData(fullGame.toJSON(), [], ["createdAt", "updatedAt"]));
-    } else {
+    } else if (gameID) {
         const fullGame = await getFullGame(gameID, false, includeDialogues === true, includeDialogues === true);
         if (!fullGame) {
             return res.status(404).send('ERROR: Game not found.');
@@ -190,6 +190,8 @@ router.get("/", authorise, async (req, res) => {
         }
 
         return res.send(Extensions.sanitiseData(fullGame.toJSON(), [], ["createdAt", "updatedAt"]));
+    } else {
+        return res.status(400).send('ERROR: Abnormal payload provided.')
     }
 })
 

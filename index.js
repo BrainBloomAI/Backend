@@ -99,13 +99,13 @@ async function onDBSynchronise() {
     if (process.env.DEBUG_MODE === "True") {
         Universal.data = {
             "scenarioPrompts": {
-                "Retail": [
+                "Retail Customer Service": [
                     "Hey! How are you doing today?",
                     "There's a discount on the tomatoes if you get 3 or more. Would you like to get some?",
                     "Would you like to pay by card or cash?",
                     "Do you need a bag for your items?"
                 ],
-                "Cafetaria": [
+                "Cafetaria Food Order": [
                     "Hi! What's your name?",
                     "Nice to meet you! Where are you from?",
                     "What would you like to order?",
