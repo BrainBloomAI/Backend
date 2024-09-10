@@ -49,6 +49,30 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: true
         },
+        mindsListening: {
+            type: DataTypes.DOUBLE,
+            allowNull: true
+        },
+        mindsEQ: {
+            type: DataTypes.DOUBLE,
+            allowNull: true
+        },
+        mindsTone: {
+            type: DataTypes.DOUBLE,
+            allowNull: true
+        },
+        mindsHelpfulness: {
+            type: DataTypes.DOUBLE,
+            allowNull: true
+        },
+        mindsClarity: {
+            type: DataTypes.DOUBLE,
+            allowNull: true
+        },
+        mindsAssessment: {
+            type: DataTypes.TEXT,
+            allowNull: true
+        },
         banned: {
             type: DataTypes.BOOLEAN,
             allowNull: true,
@@ -59,7 +83,10 @@ module.exports = (sequelize, DataTypes) => {
     // Associations
     User.associate = (models) => {
         User.hasMany(models.Game, {
-            foreignKey: 'userID',
+            foreignKey: {
+                name: 'userID',
+                allowNull: false
+            },
             as: 'playedGames',
             onDelete: 'cascade'
         })

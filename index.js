@@ -2,7 +2,7 @@ require('./services/BootCheck').check()
 const express = require('express');
 const cors = require('cors');
 const db = require('./models');
-const { User, Scenario } = db;
+const { User, Scenario, Game, GameDialogue, DialogueAttempt } = db;
 const { Encryption } = require('./services');
 require('dotenv').config()
 
@@ -72,22 +72,26 @@ if (config["routerRegistration"] != "automated") {
 
 async function onDBSynchronise() {
     // SQL-reliant service setup
-    if (!await Scenario.findOne({ where: { name: "Retail" }})) {
+    if (!await Scenario.findOne({ where: { name: "Retail Customer Service" }})) {
         await Scenario.create({
             scenarioID: Universal.generateUniqueID(),
-            name: "Retail",
+            name: "Retail Customer Service",
             backgroundImage: "retail.png",
-            description: "Retail stores are very commonplace. Whenever you need to buy some groceries or food, you may encounter interactions. This scenario is designed to simulate the interactions between a customer and a cashier.",
+            description: "I'll send you later.",
+            modelRole: 'customer',
+            userRole: 'retail worker',
             created: new Date().toISOString()
         })
     }
 
-    if (!await Scenario.findOne({ where: { name: "Cafetaria" }})) {
+    if (!await Scenario.findOne({ where: { name: "Cafetaria Food Order" }})) {
         await Scenario.create({
             scenarioID: Universal.generateUniqueID(),
-            name: "Cafetaria",
+            name: "Cafetaria Food Order",
             backgroundImage: "cafetaria.png",
-            description: "Cafetarias are places where you can buy food and drinks. This scenario is designed to simulate the interactions between a customer and a cashier.",
+            description: "I'll send you later.",
+            modelRole: 'customer',
+            userRole: 'vendor',
             created: new Date().toISOString()
         })
     }
@@ -95,13 +99,13 @@ async function onDBSynchronise() {
     if (process.env.DEBUG_MODE === "True") {
         Universal.data = {
             "scenarioPrompts": {
-                "Retail": [
+                "Retail Customer Service": [
                     "Hey! How are you doing today?",
                     "There's a discount on the tomatoes if you get 3 or more. Would you like to get some?",
                     "Would you like to pay by card or cash?",
                     "Do you need a bag for your items?"
                 ],
-                "Cafetaria": [
+                "Cafetaria Food Order": [
                     "Hi! What's your name?",
                     "Nice to meet you! Where are you from?",
                     "What would you like to order?",
@@ -109,6 +113,11 @@ async function onDBSynchronise() {
                 ]
             }
         }
+
+        await Game.destroy({ where: {} })
+        await GameDialogue.destroy({ where: {} })
+        await DialogueAttempt.destroy({ where: {} })
+        await User.update({ activeGame: null }, { where: {} })
     }
 }
 

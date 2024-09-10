@@ -3,7 +3,7 @@ const yup = require('yup');
 const { v4: uuidv4 } = require('uuid');
 const { User } = require('../models');
 const { Encryption, Logger, Universal, Extensions } = require('../services');
-const authorise = require('../middleware/auth');
+const { authorise } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -74,7 +74,7 @@ router.post('/login', async (req, res) => {
             return res.status(404).send(`UERROR: Invalid email or password.`);
         }
 
-        if (!Encryption.compare(password, user.password)) {
+        if (!await Encryption.compare(password, user.password)) {
             return res.status(401).send(`UERROR: Invalid email or password.`);
         }
 
@@ -131,7 +131,6 @@ router.post('/refreshSession', authorise, async (req, res) => {
         await user.save();
 
         Logger.log(`IDENTITY REFRESHSESSION: Session refreshed for ${user.username}`);
-
         return res.status(200).send(`SUCCESS: Session refreshed. Authentication Token: ${user.authToken}`);
     } catch (err) {
         Logger.log(`IDENTITY REFRESHSESSION ERROR: Failed to refresh session; error: ${err}`);

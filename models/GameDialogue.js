@@ -25,18 +25,30 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.INTEGER,
             allowNull: false,
             defaultValue: 0
+        },
+        successful: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false
+        },
+        createdTimestamp: {
+            type: DataTypes.STRING,
+            allowNull: false,
         }
     }, { tableName: 'gameDialogues' });
 
     // Associations
     GameDialogue.associate = (models) => {
         GameDialogue.belongsTo(models.Game, {
-            foreignKey: 'gameID',
+            foreignKey: "gameID",
             as: 'game'
         })
 
         GameDialogue.hasMany(models.DialogueAttempt, {
-            foreignKey: 'dialogueID',
+            foreignKey: {
+                name: "dialogueID",
+                allowNull: false
+            },
             as: 'attempts',
             onDelete: 'cascade'
         })
