@@ -48,8 +48,7 @@ module.exports = (sequelize, DataTypes) => {
     GameEvaluation.associate = (models) => {
         GameEvaluation.belongsTo(models.Game, {
             foreignKey: 'associatedGameID',
-            as: 'targetGame',
-            onDelete: 'cascade'
+            as: 'targetGame'
         })
     }
 
