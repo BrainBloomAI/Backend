@@ -171,25 +171,30 @@ class OpenAIChat {
     }
 
     // Generate the wrap up message for the conversation
-    // static async generateWrapUpMessage(conversationHistory, scenario) {
-    //     const prompt = `
-    //     You are role-playing as a ${scenario.roles.modelRole} in a ${scenario.description.name} scenario where the ${scenario.roles.userRole} is assisting you.
-    //     The goal of this scenario is to simulate a real-life situation to help the user develop communication skills for social inclusion.
-    //     The context of this scenario is: "${scenario.description.fullDescription}".
+    static async generateWrapUpMessage(conversationHistory, scenario) {
+        const prompt = `
+        You are role-playing as a ${scenario.roles.modelRole} in a ${scenario.description.name} scenario where the ${scenario.roles.userRole} (user) is assisting you.
+        The goal of this scenario is to simulate a real-life situation to help the user develop communication skills for social inclusion.
+        The context of this scenario is: "${scenario.description.fullDescription}".
+        The interaction is at its end now and needs to be wrapped up.
 
-    //     Here is the conversation history:
-    //     ${conversationHistory.conversationLog.map((message) => {
-    //         return `${message.by === scenario.roles.modelRole ? 'You' : 'User'}: ${message.content}`;
-    //     }).join('\n')}
-
-    //     Help to generate the last response to the conversation.
-    //     Please generate a polite, clear, and socially appropriate response that progresses the conversation naturally without repeating information already mentioned.
+        Here is the full conversation history:
+        ${conversationHistory.conversationLog.map((message) => {
+            return `${message.by}: ${message.content}`;
+        }).join('\n')}
         
-    //     Your response should stay within the context of the conversation, encourage continued engagement, and be easy to understand. 
-    //     Avoid introducing complex language or redundant points, and keep the it short and easy to understand for people with intellectual disabilities. 
-    //     Ensure the conversation stays relevant and helpful.
-    //     `;
-    // }
+        As the ${scenario.roles.modelRole}, generate a polite, clear, and socially appropriate response that ends the conversation naturally without repeating information already mentioned. 
+        Your response should stay within the context of the conversation, and be easy to understand. 
+        Avoid introducing complex language or redundant points, and keep the it short and easy to understand for people with intellectual disabilities.
+        
+        Provide response content only without any extra information or formatting.
+
+        ${scenario.roles.modelRole} (You):
+        `;
+
+        const finalMessage = await OpenAIChat.prompt(prompt, scenario, true);
+        return finalMessage;
+    }
 
     // Generate the next message in conversation based on user's response
     static async generateNextMessage(conversationHistory, scenario) {

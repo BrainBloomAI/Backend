@@ -601,6 +601,20 @@ router.post('/newDialogue', authorise, async (req, res) => {
             } else if (dialoguesLength == 6) {
                 // Generate wrap-up AI follow-up dialogue
 
+                var aiWrapUp;
+                try {
+                    aiWrapUp = await OpenAIChat.generateWrapUpMessage({
+                        conversationLog: Extensions.prepGameDialogueForAI(game)
+                    }, Extensions.prepScenarioForAI(game.scenario));
+                    if (!aiWrapUp || !aiWrapUp.content) {
+                        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to generate wrap-up AI response for user with ID '${user.userID}'; error: ${err}`);
+                        return res.status(500).send(`ERROR: Failed to process request.`);
+                    }
+                } catch (err) {
+                    Logger.log(`GAME NEWDIALOGUE ERROR: Failed to generate wrap-up AI response for user with ID '${user.userID}'; error: ${err}`);
+                    return res.status(500).send(`ERROR: Failed to process request.`);
+                }
+
                 const aiWrapUpDialogue = await GameDialogue.create({
                     dialogueID: Universal.generateUniqueID(),
                     gameID: game.gameID,
@@ -613,7 +627,7 @@ router.post('/newDialogue', authorise, async (req, res) => {
                     attemptID: Universal.generateUniqueID(),
                     dialogueID: aiWrapUpDialogue.dialogueID,
                     attemptNumber: 1,
-                    content: Universal.data["scenarioPrompts"][game.scenario.name][3],
+                    content: aiWrapUp.content, // Universal.data["scenarioPrompts"][game.scenario.name][3],
                     successful: true,
                     timestamp: new Date().toISOString(),
                     timeTaken: 0.0
