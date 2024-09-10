@@ -146,7 +146,10 @@ class OpenAIChat {
 
     // Generate an initial message based on a scenario
     static async generateInitialMessage(scenario) {
-        return await OpenAIChat.prompt("Initiate the conversation with me.", scenario, true);
+        const prompt = `
+        Initiate the conversation with me (${scenario.roles.userRole}) as ${scenario.roles.modelRole}.
+        `;
+        return await OpenAIChat.prompt(prompt, scenario, true);
     }
 
     // Generate an ideal response to the last message
