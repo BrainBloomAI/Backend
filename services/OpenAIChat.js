@@ -164,6 +164,7 @@ class OpenAIChat {
             This scenario is for a person with intellectual disabilities to learn appropriate communication in real-life settings.
             Generate an ideal response that is clear, polite, and relevant to what the ${scenario.roles.modelRole} last said in this context.
             Limit the length of the response to something that will be easy to repeat.
+            Please provide only the message content without any extra information or formatting.
         `;
         
         return await OpenAIChat.prompt(prompt, scenario, true);
@@ -255,7 +256,11 @@ class OpenAIChat {
     
             In addition:
             - Provide a simple, short description of the user’s performance for user feedback.
-            - Provide a detailed description of the user’s performance for staff feedback.
+            - Provide a detailed description of the user’s performance for staff feedback. Given that the staff are trained at dealing with people with intellectual disabiliteis, include detailed and constructive feedback for the staff to further teach the users for future interactions. Respond as if telling directly to the staff.
+    
+            Provide the results in the following format:
+            - User Feedback: [short description]
+            - Staff Feedback: [short description]
     
             Conversation history: 
             ${conversationHistory.conversationLog.map((message) => {

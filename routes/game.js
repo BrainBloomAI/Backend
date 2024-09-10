@@ -70,9 +70,34 @@ async function getFullGame(gameID, json = false, includeDialogues = false, inclu
 }
 
 async function evaluateAttempt(game, attempt) {
-    
+    const conversationLog = Extensions.prepGameDialogueForAI(game);
+    const evaluationInput = {
+        conversationLog: conversationLog,
+        targetAttempt: attempt.content
+    }
 
-    return {}
+    try {
+        const evaluationResponse = await OpenAIChat.evaluateResponse(evaluationInput, Extensions.prepScenarioForAI(game.scenario));
+        if (typeof evaluationResponse !== "boolean") {
+            Logger.log(`GAME EVALUATEATTEMPT ERROR: Evaluation response was not a boolean; response: ${evaluationResponse}`);
+            return null;
+        } else {
+            if (evaluationResponse) {
+                return { evaluationResponse };
+            } else {
+                const suggestedAIResponse = await OpenAIChat.generateIdealResponse(evaluationInput, Extensions.prepScenarioForAI(game.scenario));
+                if (!suggestedAIResponse || !suggestedAIResponse.content) {
+                    Logger.log(`GAME EVALUATEATTEMPT ERROR: Failed to generate suggested AI response for user with ID '${game.userID}'; error: ${err}`);
+                    return null;
+                }
+
+                return { evaluationResponse, suggestedAIResponse: suggestedAIResponse.content };
+            }
+        }
+    } catch (err) {
+        Logger.log(`GAME EVALUATEATTEMPT ERROR: Failed to evaluate attempt for user with ID '${game.userID}'; error: ${err}`);
+        return null;
+    }
 }
 
 router.get('/scenarios', async (req, res) => {
@@ -472,12 +497,20 @@ router.post('/newDialogue', authorise, async (req, res) => {
     }
 
     // Perform AI evaluation of content
-    const evaluationData = await evaluateAttempt(game, newAttempt)
-
-    return res.send(evaluationData);
+    var evaluationData;
+    try {
+        evaluationData = await evaluateAttempt(game, newAttempt);
+        if (!evaluationData) {
+            Logger.log(`GAME NEWDIALOGUE ERROR: Failed to evaluate attempt for user with ID '${user.userID}'; null value returned.`);
+            return res.status(500).send(`ERROR: Failed to process request.`);
+        }
+    } catch (err) {
+        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to evaluate attempt for user with ID '${user.userID}'; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
     
-    const responseMode = req.body.debugSuccess === true ? "success" : "retry"; // "retry" or "success"
-    const suggestedAIResponse = "Sample suggested AI response.";
+    const responseMode = evaluationData.evaluationResponse ? "success" : "retry"; // "retry" or "success"
+    const suggestedAIResponse = evaluationData.suggestedAIResponse ? evaluationData.suggestedAIResponse : null;
 
     // Update attempt information
     if (responseMode == "success") {

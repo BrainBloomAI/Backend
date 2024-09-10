@@ -80,7 +80,7 @@ if (config["routerRegistration"] != "automated") {
 
 async function onDBSynchronise() {
     // SQL-reliant service setup
-    await Scenario.destroy({ where: {}})
+    // await Scenario.destroy({ where: {}})
     if (!await Scenario.findOne({ where: { name: "Retail Customer Service" }})) {
         await Scenario.create({
             scenarioID: Universal.generateUniqueID(),

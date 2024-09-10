@@ -22,7 +22,7 @@ class Extensions {
         return (afterDate.getTime() - beforeDate.getTime()) / 1000;
     }
 
-    static sanitiseData(data, allowedKeys=[], disallowedKeys=[], allowedTopLevelKeys=[]) {
+    static sanitiseData(data, allowedKeys = [], disallowedKeys = [], allowedTopLevelKeys = []) {
         if (allowedKeys.length == 0 && disallowedKeys.length == 0 && allowedTopLevelKeys.length == 0) { return data }
         var dataToReturn = {}
         for (let attribute of Object.keys(data)) {
@@ -73,6 +73,29 @@ class Extensions {
                 userRole: scenario.userRole
             }
         }
+    }
+
+    /**
+     * 
+     * @param {Model} fullGame 
+     */
+    static prepGameDialogueForAI(fullGame) {
+        const sortedDialogues = fullGame.dialogues.map(d => d.toJSON()).sort((a, b) => {
+            return new Date(a.createdTimestamp) - new Date(b.createdTimestamp)
+        })
+
+        var conversationLog = []
+        sortedDialogues.forEach(dialogue => {
+            const successfulAttempt = dialogue.attempts.find(a => a.successful)
+            if (successfulAttempt) {
+                conversationLog.push({
+                    by: dialogue.by == 'user' ? fullGame.scenario.userRole : fullGame.scenario.modelRole,
+                    content: successfulAttempt.content
+                })
+            }
+        })
+
+        return conversationLog
     }
 }
 
