@@ -214,9 +214,11 @@ class OpenAIChat {
         Ensure the conversation stays relevant and helpful.
         
         Provide response content only without any extra information or formatting.
+
+        ${scenario.roles.modelRole} (You):
         `;
 
-        const nextMessage = await OpenAIChat.prompt(prompt, true);
+        const nextMessage = await OpenAIChat.prompt(prompt, scenario, true);
         return nextMessage;
     }
 
@@ -243,11 +245,13 @@ class OpenAIChat {
             
             Consider whether the response from the ${scenario.roles.userRole} is appropriate, relevant, clear, and socially suitable in the context of the entire conversation and scenario.
             
-            Respond with "true" if the response is appropriate, or "false" if it is not. Ensure your response is based on the overall context and communication goals described.
+            Respond with "true" if the response is appropriate, or "false" if it is not. 
+            Ensure your response is based on the overall context and communication goals described.
+            In addition, be more lenient in your evaluation given that the user has intellectual disabilities.
             Provide only "True" or "False" in your answer.
         `;
         
-        const evaluation = await OpenAIChat.prompt(prompt, true);
+        const evaluation = await OpenAIChat.prompt(prompt, scenario, true);
         console.log(evaluation.content);
         return evaluation.content === 'True';
     }
@@ -267,21 +271,21 @@ class OpenAIChat {
             3. Tone appropriateness (was the user's tone polite and inclusive?)
             4. Helpfulness (did the user respond helpfully?)
             5. Clarity (was the response clear and easy to understand?)
+
+            In addition:
+            - Provide a simple, short description of the user’s performance for user feedback.
+            - Provide a detailed description of the user’s performance for staff feedback. Given that the staff are trained at dealing with people with intellectual disabiliteis, include detailed and constructive feedback for the staff to further teach the users for future interactions. Respond as if telling directly to the staff. Return as a paragraph.
     
-            Provide the results in the following format:
+            Provide the results separated by a pipe (|) symbol, without spaces or the label, in the following order:
             - Listening and comprehension: [percentage]%
             - Emotional intelligence: [percentage]%
             - Tone appropriateness: [percentage]%
             - Helpfulness: [percentage]%
             - Clarity: [percentage]%
-    
-            In addition:
-            - Provide a simple, short description of the user’s performance for user feedback.
-            - Provide a detailed description of the user’s performance for staff feedback. Given that the staff are trained at dealing with people with intellectual disabiliteis, include detailed and constructive feedback for the staff to further teach the users for future interactions. Respond as if telling directly to the staff.
-    
-            Provide the results in the following format:
             - User Feedback: [short description]
-            - Staff Feedback: [short description]
+            - Staff Feedback: [detailed description]
+
+            Example: 0|0|0|0|0|Sample short description.|Sample very long description. Can be multiple lines.
     
             Conversation history: 
             ${conversationHistory.conversationLog.map((message) => {
@@ -290,42 +294,34 @@ class OpenAIChat {
         `;
     
         // Get the response from OpenAI
-        const evaluation = await OpenAIChat.prompt(prompt, true);
+        const evaluation = await OpenAIChat.prompt(prompt, scenario, true);
         const evaluationContent = evaluation.content;
+        
+        console.log(evaluationContent)
+
+        const evaluationData = evaluationContent.split('|');
     
-        // Extract percentages using regex
-        const listeningMatch = evaluationContent.match(/Listening and comprehension: (\d+)%/);
-        const eqMatch = evaluationContent.match(/Emotional intelligence: (\d+)%/);
-        const toneMatch = evaluationContent.match(/Tone appropriateness: (\d+)%/);
-        const helpfulnessMatch = evaluationContent.match(/Helpfulness: (\d+)%/);
-        const clarityMatch = evaluationContent.match(/Clarity: (\d+)%/);
+        const listening = parseFloat(evaluationData[0]);
+        const eq = parseFloat(evaluationData[1]);
+        const tone = parseFloat(evaluationData[2]);
+        const helpfulness = parseFloat(evaluationData[3]);
+        const clarity = parseFloat(evaluationData[4]);
 
-        const listeningPercentage = listeningMatch ? parseInt(listeningMatch[1], 10) : 0;
-        const eqPercentage = eqMatch ? parseInt(eqMatch[1], 10) : 0;
-        const tonePercentage = toneMatch ? parseInt(toneMatch[1], 10) : 0;
-        const helpfulnessPercentage = helpfulnessMatch ? parseInt(helpfulnessMatch[1], 10) : 0;
-        const clarityPercentage = clarityMatch ? parseInt(clarityMatch[1], 10) : 0;
-
-        // Extract short description (for user feedback)
-        const shortDescriptionMatch = evaluationContent.match(/\*\*User Feedback:\*\*\s*(.*?)(?=\n\n|\Z)/s);
-        const shortDescription = shortDescriptionMatch ? shortDescriptionMatch[1].trim() : 'No short description provided.';
-
-        // Extract detailed description (for staff feedback)
-        const detailedDescriptionMatch = evaluationContent.match(/\*\*Staff Feedback:\*\*\s*(.*)/s);
-        const detailedDescription = detailedDescriptionMatch ? detailedDescriptionMatch[1].trim() : 'No detailed description provided.';
+        const userFeedback = evaluationData[5] ? evaluationData[5] : "No user feedback.";
+        const staffFeedback = evaluationData[6] ? evaluationData[6] : "No staff feedback.";
 
         // Return the extracted data
         return {
             scores: {
-                listening: listeningPercentage,
-                emotionalIntelligence: eqPercentage,
-                tone: tonePercentage,
-                helpfulness: helpfulnessPercentage,
-                clarity: clarityPercentage,
+                listening: listening,
+                emotionalIntelligence: eq,
+                tone: tone,
+                helpfulness: helpfulness,
+                clarity: clarity
             },
             descriptions: {
-                shortDescription,
-                detailedDescription
+                userFeedback,
+                staffFeedback
             }
         };
     }

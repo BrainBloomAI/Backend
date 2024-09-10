@@ -2,7 +2,7 @@ require('./services/BootCheck').check()
 const express = require('express');
 const cors = require('cors');
 const db = require('./models');
-const { User, Scenario, Game, GameDialogue, DialogueAttempt } = db;
+const { User, Scenario, Game, GameDialogue, DialogueAttempt, GameEvaluation } = db;
 const { Encryption, OpenAIChat } = require('./services');
 require('dotenv').config()
 
@@ -124,6 +124,7 @@ async function onDBSynchronise() {
         }
 
         await Game.destroy({ where: {} })
+        await GameEvaluation.destroy({ where: {} })
         await GameDialogue.destroy({ where: {} })
         await DialogueAttempt.destroy({ where: {} })
         await User.update({ activeGame: null }, { where: {} })

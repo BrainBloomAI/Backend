@@ -1,5 +1,5 @@
 const express = require('express');
-const { Scenario, User, Game, GameDialogue, DialogueAttempt } = require('../models');
+const { Scenario, User, Game, GameDialogue, DialogueAttempt, GameEvaluation } = require('../models');
 const { Logger, Universal, Extensions, OpenAIChat } = require('../services');
 const { authorise } = require('../middleware/auth');
 const router = express.Router();
@@ -411,6 +411,7 @@ router.post('/abandon', authorise, async (req, res) => {
 })
 
 router.post('/newDialogue', authorise, async (req, res) => {
+    var doNotSendResponse = false;
     var user;
     try {
         user = await User.findByPk(req.userID);
@@ -526,22 +527,24 @@ router.post('/newDialogue', authorise, async (req, res) => {
 
     // Perform AI evaluation of content
     var evaluationData;
-    try {
-        evaluationData = await evaluateAttempt(game, newAttempt);
-        if (!evaluationData) {
-            Logger.log(`GAME NEWDIALOGUE ERROR: Failed to evaluate attempt for user with ID '${user.userID}'; null value returned.`);
+    if (req.body.debugSuccess !== true) {
+        try {
+            evaluationData = await evaluateAttempt(game, newAttempt);
+            if (!evaluationData) {
+                Logger.log(`GAME NEWDIALOGUE ERROR: Failed to evaluate attempt for user with ID '${user.userID}'; null value returned.`);
+                return res.status(500).send(`ERROR: Failed to process request.`);
+            }
+        } catch (err) {
+            Logger.log(`GAME NEWDIALOGUE ERROR: Failed to evaluate attempt for user with ID '${user.userID}'; error: ${err}`);
             return res.status(500).send(`ERROR: Failed to process request.`);
         }
-    } catch (err) {
-        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to evaluate attempt for user with ID '${user.userID}'; error: ${err}`);
-        return res.status(500).send(`ERROR: Failed to process request.`);
+
+        console.log(`Evaluation result for attempt text '${content}':`)
+        console.log(evaluationData)
     }
 
-    console.log(`Evaluation result for attempt text '${content}':`)
-    console.log(evaluationData)
-    
-    const responseMode = evaluationData.evaluationResponse ? "success" : "retry"; // "retry" or "success"
-    const suggestedAIResponse = evaluationData.suggestedAIResponse ? evaluationData.suggestedAIResponse : null;
+    const responseMode = req.body.debugSuccess === true ? "success" : (evaluationData.evaluationResponse ? "success" : "retry"); // "retry" or "success"
+    const suggestedAIResponse = req.body.debugSuccess === true ? "hehe" : (evaluationData.suggestedAIResponse ? evaluationData.suggestedAIResponse : null);
 
     // Update attempt information
     if (responseMode == "success") {
@@ -564,6 +567,37 @@ router.post('/newDialogue', authorise, async (req, res) => {
                 await user.save();
 
                 res.send({ message: "SUCCESS: Conversation complete. Thanks for playing!" });
+                doNotSendResponse = true;
+
+                // Conduct AI evaluation of game
+                var gameEvaluationData;
+                try {
+                    gameEvaluationData = await OpenAIChat.evaluateConversation({ conversationLog: Extensions.prepGameDialogueForAI(game) }, Extensions.prepScenarioForAI(game.scenario));
+                    if (!gameEvaluationData) {
+                        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to evaluate conversation for user with ID '${user.userID}'; null value returned.`);
+                        return;
+                    }
+
+                    console.log("Received evaluation data:")
+                    console.log(gameEvaluationData)
+                } catch (err) {
+                    Logger.log(`GAME NEWDIALOGUE ERROR: Failed to evaluate conversation for user with ID '${user.userID}'; error: ${err}`);
+                    return;
+                }
+
+                const gameEvaluation = await GameEvaluation.create({
+                    evaluationID: Universal.generateUniqueID(),
+                    associatedGameID: game.gameID,
+                    listening: gameEvaluationData.scores.listening,
+                    eq: gameEvaluationData.scores.emotionalIntelligence,
+                    tone: gameEvaluationData.scores.tone,
+                    helpfulness: gameEvaluationData.scores.helpfulness,
+                    clarity: gameEvaluationData.scores.clarity,
+                    simpleDescription: gameEvaluationData.descriptions.userFeedback,
+                    fullDescription: gameEvaluationData.descriptions.staffFeedback
+                })
+
+                return;
             } else if (dialoguesLength == 6) {
                 // Generate wrap-up AI follow-up dialogue
 
@@ -626,7 +660,9 @@ router.post('/newDialogue', authorise, async (req, res) => {
             }
         } catch (err) {
             Logger.log(`GAME NEWDIALOGUE ERROR: Failed to update attempt information for user with ID '${user.userID}'; error: ${err}`);
-            return res.status(500).send(`ERROR: Failed to process request.`);
+            if (!doNotSendResponse) {
+                return res.status(500).send(`ERROR: Failed to process request.`);
+            }
         }
     } else {
         // Prompt client to retry, include suggested AI response for help
