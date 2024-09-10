@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const db = require('./models');
 const { User, Scenario, Game, GameDialogue, DialogueAttempt } = db;
-const { Encryption } = require('./services');
+const { Encryption, OpenAIChat } = require('./services');
 require('dotenv').config()
 
 const env = process.env.DB_CONFIG || 'development';
@@ -20,6 +20,14 @@ Cache.load();
 
 if (Cache.get("usageLock") == undefined) {
     Cache.set("usageLock", false)
+}
+
+if (OpenAIChat.checkPermission()) {
+    console.log("MAIN: OpenAI Chat service is enabled.")
+    const initialisation = OpenAIChat.initialise();
+    if (initialisation !== true) {
+        console.log(`MAIN: OpenAI Chat service failed to initialise. Error: ${initialisation}`)
+    }
 }
 
 // Import middleware
@@ -72,12 +80,13 @@ if (config["routerRegistration"] != "automated") {
 
 async function onDBSynchronise() {
     // SQL-reliant service setup
+    await Scenario.destroy({ where: {}})
     if (!await Scenario.findOne({ where: { name: "Retail Customer Service" }})) {
         await Scenario.create({
             scenarioID: Universal.generateUniqueID(),
             name: "Retail Customer Service",
             backgroundImage: "retail.png",
-            description: "I'll send you later.",
+            description: "An AI customer will ask for help when searching for something specific in a retail store. Learn to response courteously and in an easy-to-understand manner as a retail worker in the store.",
             modelRole: 'customer',
             userRole: 'retail worker',
             created: new Date().toISOString()
@@ -89,7 +98,7 @@ async function onDBSynchronise() {
             scenarioID: Universal.generateUniqueID(),
             name: "Cafetaria Food Order",
             backgroundImage: "cafetaria.png",
-            description: "I'll send you later.",
+            description: "An AI customer will order food from you in a cafetaria. Understand the complexity of taking orders and responding as a vendor in the cafetaria.",
             modelRole: 'customer',
             userRole: 'vendor',
             created: new Date().toISOString()

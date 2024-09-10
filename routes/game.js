@@ -1,6 +1,6 @@
 const express = require('express');
 const { Scenario, User, Game, GameDialogue, DialogueAttempt } = require('../models');
-const { Logger, Universal, Extensions } = require('../services');
+const { Logger, Universal, Extensions, OpenAIChat } = require('../services');
 const { authorise } = require('../middleware/auth');
 const router = express.Router();
 
@@ -67,6 +67,12 @@ async function getFullGame(gameID, json = false, includeDialogues = false, inclu
         Logger.log(`GAME GETFULLGAME ERROR: Failed to fetch full game with specified fetch parameters; error: ${err}`);
         return null
     }
+}
+
+async function evaluateAttempt(game, attempt) {
+    
+
+    return {}
 }
 
 router.get('/scenarios', async (req, res) => {
@@ -261,7 +267,19 @@ router.post('/new', authorise, async (req, res) => {
     }
 
     // Generate initial AI response (mock data for now)
-    const initialPrompt = Universal.data["scenarioPrompts"][targetScenario.name][0];
+    // const initialPrompt = Universal.data["scenarioPrompts"][targetScenario.name][0];
+    var initialPromptResponse;
+    try {
+        initialPromptResponse = await OpenAIChat.generateInitialMessage(Extensions.prepScenarioForAI(targetScenario));
+        if (!initialPromptResponse || !initialPromptResponse.content) {
+            Logger.log(`GAME NEW ERROR: Failed to generate initial AI response for user with ID '${user.userID}'; error: ${err}`);
+            return res.status(500).send(`ERROR: Failed to process request.`);
+        }
+    } catch (err) {
+        Logger.log(`GAME NEW ERROR: Failed to generate initial AI response for user with ID '${user.userID}'; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+    const initialPrompt = initialPromptResponse.content;
 
     // Generate initial AI GameDialogue
     var aiDialogue;
@@ -446,13 +464,18 @@ router.post('/newDialogue', authorise, async (req, res) => {
 
         targetDialogue.attemptsCount += 1;
         await targetDialogue.save();
+
+        await game.reload();
     } catch (err) {
         Logger.log(`GAME NEWDIALOGUE ERROR: Failed to create new dialogue attempt for user with ID '${user.userID}'; error: ${err}`);
         return res.status(500).send(`ERROR: Failed to process request.`);
     }
 
     // Perform AI evaluation of content
-    // Mock data for now
+    const evaluationData = await evaluateAttempt(game, newAttempt)
+
+    return res.send(evaluationData);
+    
     const responseMode = req.body.debugSuccess === true ? "success" : "retry"; // "retry" or "success"
     const suggestedAIResponse = "Sample suggested AI response.";
 

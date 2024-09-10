@@ -1,3 +1,5 @@
+const { Model } = require("sequelize");
+
 class Extensions {
     /**
      * Filter a dictionary with a predicate.
@@ -54,6 +56,23 @@ class Extensions {
             }
         }
         return dataToReturn
+    }
+
+    /**
+     * 
+     * @param {Model} scenario 
+     */
+    static prepScenarioForAI(scenario) {
+        return {
+            description: {
+                name: scenario.name,
+                fullDescription: scenario.description
+            },
+            roles: {
+                modelRole: scenario.modelRole,
+                userRole: scenario.userRole
+            }
+        }
     }
 }
 
