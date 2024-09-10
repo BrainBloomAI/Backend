@@ -164,11 +164,32 @@ class OpenAIChat {
             This scenario is for a person with intellectual disabilities to learn appropriate communication in real-life settings.
             Generate an ideal response that is clear, polite, and relevant to what the ${scenario.roles.modelRole} last said in this context.
             Limit the length of the response to something that will be easy to repeat.
-            Please provide only the message content without any extra information or formatting.
+            Please provide only the message content without any extra information or formatting, ensure that the response is by ${scenario.roles.userRole}.
         `;
         
         return await OpenAIChat.prompt(prompt, scenario, true);
     }
+
+    // Generate the wrap up message for the conversation
+    // static async generateWrapUpMessage(conversationHistory, scenario) {
+    //     const prompt = `
+    //     You are role-playing as a ${scenario.roles.modelRole} in a ${scenario.description.name} scenario where the ${scenario.roles.userRole} is assisting you.
+    //     The goal of this scenario is to simulate a real-life situation to help the user develop communication skills for social inclusion.
+    //     The context of this scenario is: "${scenario.description.fullDescription}".
+
+    //     Here is the conversation history:
+    //     ${conversationHistory.conversationLog.map((message) => {
+    //         return `${message.by === scenario.roles.modelRole ? 'You' : 'User'}: ${message.content}`;
+    //     }).join('\n')}
+
+    //     Help to generate the last response to the conversation.
+    //     Please generate a polite, clear, and socially appropriate response that progresses the conversation naturally without repeating information already mentioned.
+        
+    //     Your response should stay within the context of the conversation, encourage continued engagement, and be easy to understand. 
+    //     Avoid introducing complex language or redundant points, and keep the it short and easy to understand for people with intellectual disabilities. 
+    //     Ensure the conversation stays relevant and helpful.
+    //     `;
+    // }
 
     // Generate the next message in conversation based on user's response
     static async generateNextMessage(conversationHistory, scenario) {
@@ -176,30 +197,23 @@ class OpenAIChat {
         const lastUserMessage = conversationHistory.conversationLog
             .filter(message => message.by === scenario.roles.userRole)  // Get all messages by the user
             .slice(-1)[0];  // Get the last message
-        
-        if (!lastUserMessage) {
-            throw new Error('No user message found in conversation history.');
-        } else {
-            console.log(lastUserMessage);
-        }
     
         const prompt = `
-        You are role-playing as a ${scenario.roles.modelRole} in a ${scenario.description.name} scenario where the ${scenario.roles.userRole} is assisting you.
+        You are role-playing as a ${scenario.roles.modelRole} in a ${scenario.description.name} scenario where the ${scenario.roles.userRole} (user) is assisting you.
         The goal of this scenario is to simulate a real-life situation to help the user develop communication skills for social inclusion.
         The context of this scenario is: "${scenario.description.fullDescription}".
 
         Here is the conversation history so far:
         ${conversationHistory.conversationLog.map((message) => {
-            return `${message.by === scenario.roles.modelRole ? 'You' : 'User'}: ${message.content}`;
+            return `${message.by}: ${message.content}`;
         }).join('\n')}
-
-        The ${scenario.roles.userRole}, who is a person with intellectual disabilities, has just said: "${lastUserMessage.content}".
         
-        Please generate a polite, clear, and socially appropriate response that progresses the conversation naturally without repeating information already mentioned, especially anything related to the user mentioning "My friend is looking for a birthday gift" or similar phrases.
-        
+        As the ${scenario.roles.modelRole}, generate a polite, clear, and socially appropriate response that progresses the conversation naturally without repeating information already mentioned. 
         Your response should stay within the context of the conversation, encourage continued engagement, and be easy to understand. 
         Avoid introducing complex language or redundant points, and keep the it short and easy to understand for people with intellectual disabilities. 
         Ensure the conversation stays relevant and helpful.
+        
+        Provide response content only without any extra information or formatting.
         `;
 
         const nextMessage = await OpenAIChat.prompt(prompt, true);
@@ -216,18 +230,25 @@ class OpenAIChat {
             .filter(message => message.by === scenario.roles.modelRole)
             .slice(-1)[0];  // Get the last system message
         
-        console.log(lastSystemMessage);
-        
         const prompt = `
-            In this ${scenario.description.tag} scenario, the ${scenario.roles.userRole} (a person with intellectual disabilities) has responded with: "${conversationHistory.targetAttempt}"
-            to the last message: "${lastSystemMessage.content}". 
-            The goal of the scenario is to teach the ${scenario.roles.userRole} how to communicate appropriately in social interactions.
-            Evaluate whether this response is relevant, clear, and socially appropriate in this ${scenario.description.name} context.
-            Respond with "true" if it is appropriate, or "false" if it is not.
+            You are evaluating a response in a ${scenario.description.name} scenario. The scenario is described as: "${scenario.description.fullDescription}".
+            
+            Here is the conversation history:
+            ${conversationHistory.conversationLog.map((message) => `${message.by}: ${message.content}`).join('\n')}
+            
+            The goal of this scenario is to help the ${scenario.roles.userRole} (the user, who has intellectual disabilities) learn how to communicate appropriately and effectively.
+            
+            The ${scenario.roles.modelRole} (you) last said: "${lastSystemMessage.content}"
+            The ${scenario.roles.userRole} has responded with: "${conversationHistory.targetAttempt}"
+            
+            Consider whether the response from the ${scenario.roles.userRole} is appropriate, relevant, clear, and socially suitable in the context of the entire conversation and scenario.
+            
+            Respond with "true" if the response is appropriate, or "false" if it is not. Ensure your response is based on the overall context and communication goals described.
+            Provide only "True" or "False" in your answer.
         `;
         
         const evaluation = await OpenAIChat.prompt(prompt, true);
-        console.log(evaluation);
+        console.log(evaluation.content);
         return evaluation.content === 'True';
     }
 
@@ -271,7 +292,6 @@ class OpenAIChat {
         // Get the response from OpenAI
         const evaluation = await OpenAIChat.prompt(prompt, true);
         const evaluationContent = evaluation.content;
-        console.log(evaluationContent);
     
         // Extract percentages using regex
         const listeningMatch = evaluationContent.match(/Listening and comprehension: (\d+)%/);
