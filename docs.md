@@ -434,6 +434,82 @@ Sample success response:
 SUCCESS: MINDS evaluation removed.
 ```
 
+## GET `/scenario`
+
+(Same as [GET `/game/scenarios`](#get-gamescenarios))
+
+Authorisation required: NONE
+
+No required body fields. Retrieves all scenarios in the system.
+
+Sample success response body:
+```json
+[
+	{
+		"scenarioID": "2f183b1f-681a-4e38-a359-80fd25d4d743",
+		"name": "Retail Customer Service",
+		"backgroundImage": "retail.png",
+		"description": "An AI customer will ask for help when searching for something specific in a retail store. Learn to respond courteously and in an easy-to-understand manner as a retail worker in the store.",
+		"modelRole": "customer",
+		"userRole": "retail worker",
+		"created": "2024-09-11T15:38:48.287Z",
+		"createdAt": "2024-09-11T15:38:48.000Z",
+		"updatedAt": "2024-09-11T15:40:31.000Z"
+	},
+	{
+		"scenarioID": "62b140f9-ea94-47ee-8d0a-868745319933",
+		"name": "Peer Conversation",
+		"backgroundImage": "peerconvo.png",
+		"description": "Talk to an AI peer from school about a random topic. Learn to engage in conversation and response naturally in peer-to-peer conversations.",
+		"modelRole": "classmate",
+		"userRole": "student",
+		"created": "2024-09-11T15:40:03.706Z",
+		"createdAt": "2024-09-11T15:40:03.000Z",
+		"updatedAt": "2024-09-11T15:40:03.000Z"
+	},
+	{
+		"scenarioID": "8f8be105-fcdd-4f8c-bfd9-2f7f42c98f97",
+		"name": "Cafetaria Food Order",
+		"backgroundImage": "cafetaria.png",
+		"description": "An AI customer will order food from you in a cafetaria. Understand the complexity of taking orders and responding as a vendor in the cafetaria.",
+		"modelRole": "customer",
+		"userRole": "vendor",
+		"created": "2024-09-11T15:38:48.291Z",
+		"createdAt": "2024-09-11T15:38:48.000Z",
+		"updatedAt": "2024-09-11T15:38:48.000Z"
+	}
+]
+```
+
+## POST `/scenario/new`
+
+Authorisation required: YES, Staff only.
+
+Required fields (**Multi-part form data**):
+- `name` - Name of the scenario.
+- `description` - Description of the scenario.
+- `image` - Image file of the background image for this scenario.
+- `modelRole` - Role of the AI model in the scenario.
+- `userRole` - Role of the user in the scenario.
+
+
+
+Sample success response:
+```json
+{
+	"message": "SUCCESS: Scenario created successfully.",
+	"newScenario": {
+		"scenarioID": "6cf6f2cf-eb54-4e21-9d1c-0576ab5cd92b",
+		"name": "helloworld",
+		"backgroundImage": "e049ce3d-82e3-4b07-9bed-552e265e2e53.png",
+		"description": "HAHAHAH",
+		"modelRole": "mother",
+		"userRole": "taylorswift",
+		"created": "2024-09-11T07:13:38.316Z"
+	}
+}
+```
+
 # Game Management
 
 Endpoints at `/game` offer comprehensive game management functionality. Games are fluid objects, with many sub-nested objects for the dialogue back and forths between the computer and the user.
@@ -454,22 +530,37 @@ Sample success response:
 ```json
 [
 	{
-		"scenarioID": "39b4db53-4a1a-4c02-bf2e-46a260268500",
-		"name": "Cafetaria",
-		"backgroundImage": "cafetaria.png",
-		"description": "Cafetarias are places where you can buy food and drinks. This scenario is designed to simulate the interactions between a customer and a cashier.",
-		"created": "2024-09-06T13:52:51.404Z",
-		"createdAt": "2024-09-06T13:52:51.000Z",
-		"updatedAt": "2024-09-06T13:52:51.000Z"
+		"scenarioID": "2f183b1f-681a-4e38-a359-80fd25d4d743",
+		"name": "Retail Customer Service",
+		"backgroundImage": "retail.png",
+		"description": "An AI customer will ask for help when searching for something specific in a retail store. Learn to respond courteously and in an easy-to-understand manner as a retail worker in the store.",
+		"modelRole": "customer",
+		"userRole": "retail worker",
+		"created": "2024-09-11T15:38:48.287Z",
+		"createdAt": "2024-09-11T15:38:48.000Z",
+		"updatedAt": "2024-09-11T15:40:31.000Z"
 	},
 	{
-		"scenarioID": "de2617e6-b29f-4488-8828-d2abb8a87c5e",
-		"name": "Retail",
-		"backgroundImage": "retail.png",
-		"description": "Retail stores are very commonplace. Whenever you need to buy some groceries or food, you may encounter interactions. This scenario is designed to simulate the interactions between a customer and a cashier.",
-		"created": "2024-09-06T13:52:51.400Z",
-		"createdAt": "2024-09-06T13:52:51.000Z",
-		"updatedAt": "2024-09-06T13:52:51.000Z"
+		"scenarioID": "62b140f9-ea94-47ee-8d0a-868745319933",
+		"name": "Peer Conversation",
+		"backgroundImage": "peerconvo.png",
+		"description": "Talk to an AI peer from school about a random topic. Learn to engage in conversation and response naturally in peer-to-peer conversations.",
+		"modelRole": "classmate",
+		"userRole": "student",
+		"created": "2024-09-11T15:40:03.706Z",
+		"createdAt": "2024-09-11T15:40:03.000Z",
+		"updatedAt": "2024-09-11T15:40:03.000Z"
+	},
+	{
+		"scenarioID": "8f8be105-fcdd-4f8c-bfd9-2f7f42c98f97",
+		"name": "Cafetaria Food Order",
+		"backgroundImage": "cafetaria.png",
+		"description": "An AI customer will order food from you in a cafetaria. Understand the complexity of taking orders and responding as a vendor in the cafetaria.",
+		"modelRole": "customer",
+		"userRole": "vendor",
+		"created": "2024-09-11T15:38:48.291Z",
+		"createdAt": "2024-09-11T15:38:48.000Z",
+		"updatedAt": "2024-09-11T15:38:48.000Z"
 	}
 ]
 ```
