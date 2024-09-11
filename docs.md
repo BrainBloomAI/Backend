@@ -492,7 +492,9 @@ Required fields (**Multi-part form data**):
 - `modelRole` - Role of the AI model in the scenario.
 - `userRole` - Role of the user in the scenario.
 
+Sample multi-part request body:
 
+<img width="594" alt="Screenshot 2024-09-12 at 12 48 17 AM" src="https://github.com/user-attachments/assets/49cba4d1-deec-4f94-8c7e-0c717bc632ac">
 
 Sample success response:
 ```json
