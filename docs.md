@@ -512,6 +512,37 @@ Sample success response:
 }
 ```
 
+## POST `/scenario/enforceDefaults`
+
+Authorisation required: YES, Staff only.
+
+No required body fields. Will automatically enforce the default scenarios hard-coded in the system.
+
+Sample success response:
+```
+SUCCESS: Default scenarios enforced successfully.
+```
+
+## DELETE `/scenario/delete`
+
+Authorisation required: YES, Staff only.
+
+Required fields:
+- `scenarioID` - ID of the scenario to delete. Can be used instead of `scenarioName` field.
+- `scenarioName` - Name of the scenario to delete. Can be used instead of `scenarioID` field.
+
+Sample request body:
+```json
+{
+	"scenarioID": "6cf6f2cf-eb54-4e21-9d1c-0576ab5cd92b"
+}
+```
+
+Sample success response:
+```
+SUCCESS: Scenario deleted successfully.
+```
+
 ## POST `/scenario/update`
 
 Authorisation required: YES, Staff only.
