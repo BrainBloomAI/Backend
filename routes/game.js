@@ -19,7 +19,7 @@ const router = express.Router();
  * @param {object} whereClause 
  * @returns {Promise<object|null>}
  */
-async function getFullGame(gameID, json = false, includeDialogues = false, includeAttempts = false, includeScenario = false, whereClause = null) {
+async function getFullGame(gameID, json = false, includeDialogues = false, includeAttempts = false, includeScenario = false, includeEvaluation = false, whereClause = null) {
     try {
         var includeObject = [];
         if (includeDialogues) {
@@ -45,6 +45,12 @@ async function getFullGame(gameID, json = false, includeDialogues = false, inclu
             includeObject.push({
                 model: Scenario,
                 as: "scenario"
+            })
+        }
+        if (includeEvaluation) {
+            includeObject.push({
+                model: GameEvaluation,
+                as: 'evaluation'
             })
         }
 
@@ -132,7 +138,7 @@ router.get("/", authorise, async (req, res) => {
         return res.status(500).send(`ERROR: Failed to process request.`);
     }
 
-    const { activeGame, gameID, includeDialogues, includeScenario, targetUsername } = req.body;
+    const { activeGame, gameID, includeDialogues, includeScenario, includeEvaluation, targetUsername } = req.body;
 
     var staffUser;
     if (user.role == "staff") {
@@ -160,7 +166,7 @@ router.get("/", authorise, async (req, res) => {
     try {
         if (gameID) {
             // Any user requesting specific game
-            const fullGame = await getFullGame(gameID, false, includeDialogues === true, includeDialogues === true, includeScenario === true);
+            const fullGame = await getFullGame(gameID, false, includeDialogues === true, includeDialogues === true, includeScenario === true, includeEvaluation === true);
             if (!fullGame) {
                 return res.status(404).send('ERROR: Game not found.');
             }
@@ -176,7 +182,7 @@ router.get("/", authorise, async (req, res) => {
                 return res.status(404).send('ERROR: No active game found.');
             }
 
-            const fullGame = await getFullGame(user.activeGame, false, includeDialogues === true, includeDialogues === true, includeScenario === true);
+            const fullGame = await getFullGame(user.activeGame, false, includeDialogues === true, includeDialogues === true, includeScenario === true, includeEvaluation === true);
             if (!fullGame) {
                 return res.status(404).send('ERROR: Game not found.');
             }
@@ -208,6 +214,12 @@ router.get("/", authorise, async (req, res) => {
                 includeObject.push({
                     model: Scenario,
                     as: "scenario"
+                })
+            }
+            if (includeEvaluation === true) {
+                includeObject.push({
+                    model: GameEvaluation,
+                    as: 'evaluation'
                 })
             }
 
@@ -243,6 +255,12 @@ router.get("/", authorise, async (req, res) => {
                 includeObject.push({
                     model: Scenario,
                     as: "scenario"
+                })
+            }
+            if (includeEvaluation === true) {
+                includeObject.push({
+                    model: GameEvaluation,
+                    as: 'evaluation'
                 })
             }
 
@@ -343,6 +361,7 @@ router.post('/new', authorise, async (req, res) => {
             dialogueID: Universal.generateUniqueID(),
             gameID: newGame.gameID,
             by: "system",
+            successful: true,
             attemptsCount: 1,
             createdTimestamp: new Date().toISOString()
         })
@@ -539,12 +558,12 @@ router.post('/newDialogue', authorise, async (req, res) => {
             return res.status(500).send(`ERROR: Failed to process request.`);
         }
 
-        console.log(`Evaluation result for attempt text '${content}':`)
-        console.log(evaluationData)
+        // console.log(`Evaluation result for attempt text '${content}':`)
+        // console.log(evaluationData)
     }
 
     const responseMode = req.body.debugSuccess === true ? "success" : (evaluationData.evaluationResponse ? "success" : "retry"); // "retry" or "success"
-    const suggestedAIResponse = req.body.debugSuccess === true ? "hehe" : (evaluationData.suggestedAIResponse ? evaluationData.suggestedAIResponse : null);
+    const suggestedAIResponse = req.body.debugSuccess === true ? "Sample suggested AI response." : (evaluationData.suggestedAIResponse ? evaluationData.suggestedAIResponse : null);
 
     // Update attempt information
     if (responseMode == "success") {
@@ -578,14 +597,14 @@ router.post('/newDialogue', authorise, async (req, res) => {
                         return;
                     }
 
-                    console.log("Received evaluation data:")
-                    console.log(gameEvaluationData)
+                    // console.log("Received evaluation data:")
+                    // console.log(gameEvaluationData)
                 } catch (err) {
                     Logger.log(`GAME NEWDIALOGUE ERROR: Failed to evaluate conversation for user with ID '${user.userID}'; error: ${err}`);
                     return;
                 }
 
-                const gameEvaluation = await GameEvaluation.create({
+                await GameEvaluation.create({
                     evaluationID: Universal.generateUniqueID(),
                     associatedGameID: game.gameID,
                     listening: gameEvaluationData.scores.listening,
@@ -619,6 +638,7 @@ router.post('/newDialogue', authorise, async (req, res) => {
                     dialogueID: Universal.generateUniqueID(),
                     gameID: game.gameID,
                     by: "system",
+                    successful: true,
                     attemptsCount: 1,
                     createdTimestamp: new Date().toISOString()
                 })
@@ -639,12 +659,19 @@ router.post('/newDialogue', authorise, async (req, res) => {
                 })
             } else {
                 // Generate AI follow-up dialogue
-                console.log("Using following conversation log to generate AI follow up:")
-                console.log(Extensions.prepGameDialogueForAI(game))
-                const generatedAIFollowUp = await OpenAIChat.generateNextMessage({
-                    conversationLog: Extensions.prepGameDialogueForAI(game)
-                }, Extensions.prepScenarioForAI(game.scenario));
-                if (!generatedAIFollowUp || !generatedAIFollowUp.content) {
+                // console.log("Using following conversation log to generate AI follow up:")
+                // console.log(Extensions.prepGameDialogueForAI(game))
+
+                var generatedAIFollowUp;
+                try {
+                    generatedAIFollowUp = await OpenAIChat.generateNextMessage({
+                        conversationLog: Extensions.prepGameDialogueForAI(game)
+                    }, Extensions.prepScenarioForAI(game.scenario));
+                    if (!generatedAIFollowUp || !generatedAIFollowUp.content) {
+                        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to generate follow-up AI response for user with ID '${user.userID}'; error: ${err}`);
+                        return res.status(500).send(`ERROR: Failed to process request.`);
+                    }
+                } catch (err) {
                     Logger.log(`GAME NEWDIALOGUE ERROR: Failed to generate follow-up AI response for user with ID '${user.userID}'; error: ${err}`);
                     return res.status(500).send(`ERROR: Failed to process request.`);
                 }
@@ -653,6 +680,7 @@ router.post('/newDialogue', authorise, async (req, res) => {
                     dialogueID: Universal.generateUniqueID(),
                     gameID: game.gameID,
                     by: "system",
+                    successful: true,
                     attemptsCount: 1,
                     createdTimestamp: new Date().toISOString()
                 })

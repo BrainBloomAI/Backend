@@ -257,7 +257,6 @@ class OpenAIChat {
         `;
         
         const evaluation = await OpenAIChat.prompt(prompt, scenario, true);
-        console.log(evaluation.content);
         return evaluation.content === 'True';
     }
 
@@ -301,8 +300,6 @@ class OpenAIChat {
         // Get the response from OpenAI
         const evaluation = await OpenAIChat.prompt(prompt, scenario, true);
         const evaluationContent = evaluation.content;
-        
-        console.log(evaluationContent)
 
         const evaluationData = evaluationContent.split('|');
     
