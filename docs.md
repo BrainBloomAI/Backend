@@ -1058,6 +1058,8 @@ Sample game complete response where game's AI evaluation was unsuccessful:
 
 ## POST `/game/requestEvaluation`
 
+Authorisation required: YES
 
+Both staff and standard users can access this endpoint. Staff can request evaluations regardless of whether an evaluation has already been done, in which case the old evaluation is deleted
 
 © 2024 BrainBloomAI Team. All rights reserved.

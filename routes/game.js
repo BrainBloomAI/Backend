@@ -842,8 +842,17 @@ router.post('/requestEvaluation', authorise, async (req, res) => {
     if (game.status !== "complete") {
         return res.status(400).send('ERROR: Only complete games can be evaluated.');
     }
-    if (game.evaluation && user.role !== "staff") {
-        return res.status(400).send('ERROR: Game has already been evaluated.');
+    if (game.evaluation) {
+        if (user.role !== "staff") {
+            return res.status(400).send('ERROR: Game has already been evaluated.');
+        } else {
+            try {
+                await game.evaluation.destroy();
+            } catch (err) {
+                Logger.log(`GAME REQUESTEVALUATION ERROR: Failed to delete existing evaluation for game with ID '${game.gameID}'; error: ${err}`);
+                return res.status(500).send('ERROR: Failed to process request.');
+            }
+        }
     }
 
     // Conduct AI evaluation
