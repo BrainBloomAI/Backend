@@ -174,6 +174,7 @@ router.get("/", authorise, async (req, res) => {
     }
 
     var { activeGame, gameID, includeDialogues, includeScenario, includeEvaluation, targetUsername } = req.query;
+    activeGame = activeGame === "true";
     includeDialogues = includeDialogues === "true";
     includeScenario = includeScenario === "true";
     includeEvaluation = includeEvaluation === "true";
