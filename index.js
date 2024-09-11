@@ -105,6 +105,18 @@ async function onDBSynchronise() {
         })
     }
 
+    if (!await Scenario.findOne({ where: { name: "Peer Conversation" }})) {
+        await Scenario.create({
+            scenarioID: Universal.generateUniqueID(),
+            name: "Peer Conversation",
+            backgroundImage: "peerconvo.png",
+            description: "Talk to an AI peer from school about a random topic. Learn to engage in conversation and response naturally in peer-to-peer conversations.",
+            modelRole: 'classmate',
+            userRole: 'student',
+            created: new Date().toISOString()
+        })
+    }
+
     if (process.env.DEBUG_MODE === "True") {
         Universal.data = {
             "scenarioPrompts": {
