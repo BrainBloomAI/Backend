@@ -112,6 +112,41 @@ async function evaluateAttempt(game, attempt) {
     }
 }
 
+function calculatePointsEarned(game, evaluation) {
+    var pointsEarned = 10;
+
+    // Give additional points based on evaluation performance
+    if (evaluation.listening >= 80) {
+        pointsEarned += 3;
+    }
+    if (evaluation.eq >= 80) {
+        pointsEarned += 3;
+    }
+    if (evaluation.tone >= 80) {
+        pointsEarned += 3;
+    }
+    if (evaluation.helpfulness >= 80) {
+        pointsEarned += 3;
+    }
+    if (evaluation.clarity >= 80) {
+        pointsEarned += 3;
+    }
+
+    // Give bonus points for no failed attempts
+    var fullySuccessfulDialogues = 0;
+    for (let i = 0; i < game.dialogues.length; i++) {
+        if (game.dialogues[i].by == "user" && game.dialogues[i].attemptsCount === 1) {
+            fullySuccessfulDialogues += 1;
+        }
+    }
+
+    if (fullySuccessfulDialogues == 4) {
+        pointsEarned += 5;
+    }
+
+    return pointsEarned;
+}
+
 router.get('/scenarios', async (req, res) => {
     try {
         // Fetch all scenarios
@@ -433,7 +468,6 @@ router.post('/abandon', authorise, async (req, res) => {
 })
 
 router.post('/newDialogue', authorise, async (req, res) => {
-    var doNotSendResponse = false;
     var user;
     try {
         user = await User.findByPk(req.userID);
@@ -585,8 +619,8 @@ router.post('/newDialogue', authorise, async (req, res) => {
                 user.activeGame = null;
                 await user.save();
 
-                res.send({ message: "SUCCESS: Conversation complete. Thanks for playing!" });
-                doNotSendResponse = true;
+                // Don't want errors in evaluation to prevent game completion response
+                var errorsOccurred = false;
 
                 // Conduct AI evaluation of game
                 var gameEvaluationData;
@@ -594,26 +628,47 @@ router.post('/newDialogue', authorise, async (req, res) => {
                     gameEvaluationData = await OpenAIChat.evaluateConversation({ conversationLog: Extensions.prepGameDialogueForAI(game) }, Extensions.prepScenarioForAI(game.scenario));
                     if (!gameEvaluationData) {
                         Logger.log(`GAME NEWDIALOGUE ERROR: Failed to evaluate conversation for user with ID '${user.userID}'; null value returned.`);
-                        return;
+                        errorsOccurred = true;
                     }
                 } catch (err) {
                     Logger.log(`GAME NEWDIALOGUE ERROR: Failed to evaluate conversation for user with ID '${user.userID}'; error: ${err}`);
-                    return;
+                    errorsOccurred = true;
                 }
 
-                await GameEvaluation.create({
-                    evaluationID: Universal.generateUniqueID(),
-                    associatedGameID: game.gameID,
-                    listening: gameEvaluationData.scores.listening,
-                    eq: gameEvaluationData.scores.emotionalIntelligence,
-                    tone: gameEvaluationData.scores.tone,
-                    helpfulness: gameEvaluationData.scores.helpfulness,
-                    clarity: gameEvaluationData.scores.clarity,
-                    simpleDescription: gameEvaluationData.descriptions.userFeedback,
-                    fullDescription: gameEvaluationData.descriptions.staffFeedback
-                })
+                var evaluation;
+                try {
+                    evaluation = await GameEvaluation.create({
+                        evaluationID: Universal.generateUniqueID(),
+                        associatedGameID: game.gameID,
+                        listening: gameEvaluationData.scores.listening,
+                        eq: gameEvaluationData.scores.emotionalIntelligence,
+                        tone: gameEvaluationData.scores.tone,
+                        helpfulness: gameEvaluationData.scores.helpfulness,
+                        clarity: gameEvaluationData.scores.clarity,
+                        simpleDescription: gameEvaluationData.descriptions.userFeedback,
+                        fullDescription: gameEvaluationData.descriptions.staffFeedback
+                    })
+                    if (!evaluation) {
+                        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to create evaluation for user with ID '${user.userID}'.`);
+                        errorsOccurred = true;
+                    }
+                } catch (err) {
+                    Logger.log(`GAME NEWDIALOGUE ERROR: Failed to create evaluation for user with ID '${user.userID}'; error: ${err}`);
+                    errorsOccurred = true;
+                }
 
-                return;
+                if (!errorsOccurred) {
+                    const pointsEarned = calculatePointsEarned(game, evaluation);
+                    return res.send({
+                        message: "SUCCESS: Conversation complete. Thanks for playing!",
+                        pointsEarned: pointsEarned,
+                        feedback: evaluation.simpleDescription
+                    });
+                } else {
+                    return res.send({
+                        message: 'SUCCESS: Conversation complete. Thanks for playing! Something went wrong in evaluating your performance. Please try again later.'
+                    })
+                }
             } else if (dialoguesLength == 6) {
                 // Generate wrap-up AI follow-up dialogue
 
@@ -697,9 +752,7 @@ router.post('/newDialogue', authorise, async (req, res) => {
             }
         } catch (err) {
             Logger.log(`GAME NEWDIALOGUE ERROR: Failed to update attempt information for user with ID '${user.userID}'; error: ${err}`);
-            if (!doNotSendResponse) {
-                return res.status(500).send(`ERROR: Failed to process request.`);
-            }
+            return res.status(500).send(`ERROR: Failed to process request.`);
         }
     } else {
         // Prompt client to retry, include suggested AI response for help
