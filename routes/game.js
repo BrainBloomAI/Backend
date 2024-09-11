@@ -173,10 +173,10 @@ router.get("/", authorise, async (req, res) => {
         return res.status(500).send(`ERROR: Failed to process request.`);
     }
 
-    const { activeGame, gameID, includeDialoguesString, includeScenarioString, includeEvaluationString, targetUsername } = req.query;
-    const includeDialogues = includeDialoguesString === "true";
-    const includeScenario = includeScenarioString === "true";
-    const includeEvaluation = includeEvaluationString === "true";
+    var { activeGame, gameID, includeDialogues, includeScenario, includeEvaluation, targetUsername } = req.query;
+    includeDialogues = includeDialogues === "true";
+    includeScenario = includeScenario === "true";
+    includeEvaluation = includeEvaluation === "true";
 
     var staffUser;
     if (user.role == "staff") {
