@@ -213,6 +213,19 @@ Points are awarded based on the following criteria:
 
 This means that the user can earn a maximum of 30 points per completed game. Total points are stored in the `points` field of the `User` model.
 
+# Miscellaneous
+
+## GET `/cdn/:file`
+
+Authorisation required: NONE
+
+If a file with the provided filename exists in the system, it will be returned.
+
+Sample request:
+```
+GET /cdn/retail.png
+```
+
 # Identity Management
 
 Endpoints at `/identity` offer comprehensive user management functionality.
