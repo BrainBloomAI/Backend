@@ -1060,6 +1060,25 @@ Sample game complete response where game's AI evaluation was unsuccessful:
 
 Authorisation required: YES
 
-Both staff and standard users can access this endpoint. Staff can request evaluations regardless of whether an evaluation has already been done, in which case the old evaluation is deleted
+Both staff and standard users can access this endpoint. Staff can request evaluations regardless of whether an evaluation has already been done, in which case the old evaluation is deleted. Standard users can only request evaluations for their own games, when they are complete and if they haven't already been evaluated.
+
+Required fields:
+- `gameID` - ID of the game to request evaluation for.
+
+Sample request body:
+```json
+{
+	"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73"
+}
+```
+
+Sample success response:
+```json
+{
+	"message": "SUCCESS: Evaluation complete.",
+	"pointsEarned": 15,
+	"feedback": "The user had difficulty understanding and responding to the customer’s needs."
+}
+```
 
 © 2024 BrainBloomAI Team. All rights reserved.
