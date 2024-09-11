@@ -414,7 +414,6 @@ router.post('/new', authorise, async (req, res) => {
     }
 
     // Generate initial AI response (mock data for now)
-    // const initialPrompt = Universal.data["scenarioPrompts"][targetScenario.name][0];
     var initialPromptResponse;
     try {
         initialPromptResponse = await OpenAIChat.generateInitialMessage(Extensions.prepScenarioForAI(targetScenario));
@@ -751,7 +750,7 @@ router.post('/newDialogue', authorise, async (req, res) => {
                     attemptID: Universal.generateUniqueID(),
                     dialogueID: aiWrapUpDialogue.dialogueID,
                     attemptNumber: 1,
-                    content: aiWrapUp.content, // Universal.data["scenarioPrompts"][game.scenario.name][3],
+                    content: aiWrapUp.content,
                     successful: true,
                     timestamp: new Date().toISOString(),
                     timeTaken: 0.0
@@ -791,7 +790,7 @@ router.post('/newDialogue', authorise, async (req, res) => {
                     attemptID: Universal.generateUniqueID(),
                     dialogueID: aiDialogue.dialogueID,
                     attemptNumber: 1,
-                    content: generatedAIFollowUp.content, // Universal.data["scenarioPrompts"][game.scenario.name][dialoguesLength / 2],
+                    content: generatedAIFollowUp.content,
                     successful: true,
                     timestamp: new Date().toISOString(),
                     timeTaken: 0.0

@@ -101,6 +101,45 @@ router.post('/new', authoriseStaff, async (req, res) => {
     })
 })
 
+router.post('/enforceDefaults', authoriseStaff, async (req, res) => {
+    var staffUser;
+    try {
+        staffUser = await User.findByPk(req.userID, { attributes: ['userID', 'username'] });
+    } catch (err) {
+        Logger.log(`SCENARIO NEW ERROR: Failed to find user; error: ${err}`);
+        return res.status(500).send('ERROR: Failed to process request.');
+    }
+
+    try {
+        for (const name of Object.keys(Universal.data.defaultScenarios)) {
+            const scenario = Universal.data.defaultScenarios[name];
+            var scenarioRecord = await Scenario.findOne({ where: { name: name } });
+            if (scenarioRecord) {
+                scenarioRecord.set(scenario);
+                await scenarioRecord.save();
+            } else {
+                scenarioRecord = await Scenario.create({
+                    scenarioID: Universal.generateUniqueID(),
+                    name: scenario.name,
+                    backgroundImage: scenario.backgroundImage,
+                    description: scenario.description,
+                    modelRole: scenario.modelRole,
+                    userRole: scenario.userRole,
+                    created: new Date().toISOString()
+                })
+                if (!scenarioRecord) {
+                    Logger.log(`SCENARIO ENFORCEDEFAULTS ERROR: Failed to create new scenario '${name}'.`);
+                }
+            }
+        }
+
+        Logger.log(`SCENARIO ENFORCEDEFAULTS: Default scenarios enforced by '${staffUser.username}'.`);
+    } catch (err) {
+        Logger.log(`SCENARIO ENFORCEDEFAULTS ERROR: Failed to enforce scenario defaults; error: ${err}`);
+        return res.status(500).send('ERROR: Failed to enforce scenario defaults.');
+    }
+})
+
 router.post('/update', authoriseStaff, async (req, res) => {
     var staffUser;
     try {

@@ -80,61 +80,21 @@ if (config["routerRegistration"] != "automated") {
 
 async function onDBSynchronise() {
     // SQL-reliant service setup
-    // await Scenario.destroy({ where: {}})
-    if (!await Scenario.findOne({ where: { name: "Retail Customer Service" }})) {
-        await Scenario.create({
-            scenarioID: Universal.generateUniqueID(),
-            name: "Retail Customer Service",
-            backgroundImage: "retail.png",
-            description: "An AI customer will ask for help when searching for something specific in a retail store. Learn to response courteously and in an easy-to-understand manner as a retail worker in the store.",
-            modelRole: 'customer',
-            userRole: 'retail worker',
-            created: new Date().toISOString()
-        })
-    }
-
-    if (!await Scenario.findOne({ where: { name: "Cafetaria Food Order" }})) {
-        await Scenario.create({
-            scenarioID: Universal.generateUniqueID(),
-            name: "Cafetaria Food Order",
-            backgroundImage: "cafetaria.png",
-            description: "An AI customer will order food from you in a cafetaria. Understand the complexity of taking orders and responding as a vendor in the cafetaria.",
-            modelRole: 'customer',
-            userRole: 'vendor',
-            created: new Date().toISOString()
-        })
-    }
-
-    if (!await Scenario.findOne({ where: { name: "Peer Conversation" }})) {
-        await Scenario.create({
-            scenarioID: Universal.generateUniqueID(),
-            name: "Peer Conversation",
-            backgroundImage: "peerconvo.png",
-            description: "Talk to an AI peer from school about a random topic. Learn to engage in conversation and response naturally in peer-to-peer conversations.",
-            modelRole: 'classmate',
-            userRole: 'student',
-            created: new Date().toISOString()
-        })
+    for (const name of Object.keys(Universal.data.defaultScenarios)) {
+        if (!await Scenario.findOne({ where: { name: Universal.data.defaultScenarios[name].name }})) {
+            await Scenario.create({
+                scenarioID: Universal.generateUniqueID(),
+                name: Universal.data.defaultScenarios[name].name,
+                backgroundImage: Universal.data.defaultScenarios[name].backgroundImage,
+                description: Universal.data.defaultScenarios[name].description,
+                modelRole: Universal.data.defaultScenarios[name].modelRole,
+                userRole: Universal.data.defaultScenarios[name].userRole,
+                created: new Date().toISOString()
+            })
+        }
     }
 
     if (process.env.DEBUG_MODE === "True") {
-        Universal.data = {
-            "scenarioPrompts": {
-                "Retail Customer Service": [
-                    "Hey! How are you doing today?",
-                    "There's a discount on the tomatoes if you get 3 or more. Would you like to get some?",
-                    "Would you like to pay by card or cash?",
-                    "Do you need a bag for your items?"
-                ],
-                "Cafetaria Food Order": [
-                    "Hi! What's your name?",
-                    "Nice to meet you! Where are you from?",
-                    "What would you like to order?",
-                    "Would you like to pay by card or cash?",
-                ]
-            }
-        }
-
         await Game.destroy({ where: {} })
         await GameEvaluation.destroy({ where: {} })
         await GameDialogue.destroy({ where: {} })
