@@ -11,6 +11,7 @@ Table of Contents:
 - [System Configuration](#system-configuration)
 - [Database Schemas](#database-schemas)
 - [Authentication Flow](#authentication-flow)
+- [Gamification](#gamification)
 - [Identity Management](#identity-management)
 - [Staff Management](#staff-management)
 - [Game Management](#game-management)
@@ -107,10 +108,17 @@ Note that responses may not always have the full schema of the object. Based on 
 - `email` - Unique email.
 - `password` - Hashed password.
 - `role` - Role of the user. Can be either `standard` or `staff`. Staff can perform additional actions.
+- `points` - Points earned by the user. Default is `0`.
 - `created` - ISO datetime string of account creation date.
 - `lastLogin` - ISO datetime string of last login date. Used to compute sesison expiry. Nullable.
 - `authToken` - Authentication token for the user. Used to authenticate requests. Nullable.
 - `activeGame` - ID of the game the user is currently playing. Nullable.
+- `mindsListening` - MINDS evaluation metric for listening. Nullable.
+- `mindsEQ` - MINDS evaluation metric for emotional intelligence. Nullable d.
+- `mindsTone` - MINDS evaluation metric for tone. Nullable d.
+- `mindsHelpfulness` - MINDS evaluation metric for helpfulness. Nullable d.
+- `mindsClarity` - MINDS evaluation metric for clarity. Nullable d.
+- `mindsAssessment` - MINDS evaluation assessment. Nullable.
 - `banned` - Boolean value to indicate if the user is banned. Default is `false`.
 
 `Scenario`:
@@ -126,8 +134,9 @@ Note that responses may not always have the full schema of the object. Based on 
 - `gameID` - Primary key.
 - `scenarioID` - Foreign key to `Scenario`.
 - `userID` - Foreign key to `User`.
-- `startedTimestamp` - ISO datetime string of game start time.
 - `status` - Status of the game. Can be either `'ongoing'`, `'abandoned'`, or `'complete'`.
+- `startedTimestamp` - ISO datetime string of game start time.
+- `pointsEarned` - Integer value of points earned in the game. Nullable.
 
 `GameDialogue`:
 - `dialogueID` - Primary key.
@@ -146,6 +155,17 @@ Note that responses may not always have the full schema of the object. Based on 
 - `timestamp` - ISO datetime string of attempt creation time.
 - `timeTaken` - Time taken in seconds as a double value to utter this attempt.
 
+`GameEvaluation`:
+- `evaluationID` - Primary key.
+- `associatedGameID` - Foreign key to `Game`. Optional relationship from `Game` to `GameEvaluation`.
+- `listening` - AI-estimated evaluation metric for listening. Nullable.
+- `eq` - AI-estimated evaluation metric for emotional intelligence. Nullable.
+- `tone` - AI-estimated evaluation metric for tone. Nullable.
+- `helpfulness` - AI-estimated evaluation metric for helpfulness. Nullable.
+- `clarity` - AI-estimated evaluation metric for clarity. Nullable.
+- `simpleDescription` - Simple description of the evaluation. Should be shown to the user. Nullable.
+- `fullDescription` - Full description of the evaluation. Should be shown to staff. Nullable.
+
 # Authentication Flow
 
 Users can prove their identity to the server by using an authentication token. This token is unique system-wide and is provided upon a successful login.
@@ -155,6 +175,10 @@ Auth tokens are valid for 3 hours. Tokens should be refreshed 10 minutes before 
 Steps to authenticate:
 - POST to `/identity/login` with credentials to obtain authentication token.
 - Use token as value of the header `authtoken` in all requests to the server which require authorisation.
+
+# Gamification
+
+
 
 # Identity Management
 
@@ -390,7 +414,7 @@ SUCCESS: MINDS evaluation removed.
 
 Endpoints at `/game` offer comprehensive game management functionality. Games are fluid objects, with many sub-nested objects for the dialogue back and forths between the computer and the user.
 
-Games are AI-generated interactions set in specific pre-set scenarios. The user responds to AI-generated prompts to practice making conversation at these kinds of scenarios. Using AI, inappropriate/irrelevant/inaccurate responses will be detected and the client will be told to re-try. A suggested AI generated response will be provided.
+Games are AI-generated interactions set in specific pre-set scenarios. The user responds to AI-generated prompts to practice making conversation at these kinds of scenarios. Using AI, inappropriate/irrelevant/inaccurate responses will be detected and the client will be told to re-try. A suggested AI generated response will be provided. Thus, an OpenAI API key is required to be configured beforehand.
 
 From a technical perspective, each `Scenario` can have many `Game`s. `Game`s belong to a `Scenario` (`scenarioID`) and a user (`userID`).
 
@@ -432,106 +456,273 @@ Authorisation required: YES
 
 Both staff and account owners can access this endpoint. Staff can access all games, and can also filter by user. Account owners can only access their own games, and can also choose to just see their active game.
 
-All possible body fields:
+All possible query parameter fields:
 - `targetUsername` - Only if you have staff privileges. Filters games by the user's username. Not providing this field will show all games.
 - `activeGame` - Only for standard users. If set to `true`, will only show the user's active game. Will return an error message if there is no game currently active. If set to `false`, will show all of the user's games.
-- `gameID` - Only for standard users. If set, will show the game with the specified ID. If not set, will show all games.
+- `gameID` - For all users. If set, will show the game with the specified ID. If not set, will show all games.
 - `includeDialogues` - For all users. If set to `true`, will include all dialogues for each game. Default is `false`.
+- `includeScenario` - For all users. If set to `true`, scenario data will be included under `scenario` parameter. Default is `false`.
+- `includeEvaluation` - For all users. If set to `true`, evaluation data will be included under `evaluation` parameter. Default is `false`. Do note that some games may not have evaluations just yet, in which case the parameter's value will be `null`.
+- `includeSimpleConversationLog` - For all users. If set to `true`, a chronologically ordered array of objects containing each actual dialogue message and who it was from will be provided under the `conversationLog` parameter. Can help to easily understand the coonversation flow in a game. Default is `false`. Note that unsuccessful dialogue attempts are not included.
 
-Sample request body for staff:
-```json
-{
-    "targetUsername": "johndoe"
-}
+Sample request query string for staff:
+```
+${origin}/game?targetUsername=someuser
 ```
 
-Sample request body for standard users:
-```json
-{
-    "activeGame": true,
-    "includeDialogues": true
-}
+Sample request query for standard users:
+```
+${origin}/game?activeGame=true&includeDialogues=true&includeEvaluation=true
 ```
 
-Sample success body for standard users when showing active game with include dialogues enabled:
+For this sample request query from a standard user:
+```
+${origin}/game?includeDialogues=true&includeEvaluation=true&includeScenario=true&activeGame=false&includeSimpleConversationLog=true
+```
+
+Here's an example success response body:
 ```json
-{
-	"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
-	"startedTimestamp": "2024-09-06T14:47:44.434Z",
-	"status": "ongoing",
-	"userID": "f7eadd26-6922-4db0-a628-08d5c2afb49b",
-	"scenarioID": "39b4db53-4a1a-4c02-bf2e-46a260268500",
-	"dialogues": [
-		{
-			"dialogueID": "137dc223-84c4-47b4-8d73-85dccdaf4cab",
-			"by": "system",
-			"attemptsCount": 1,
-			"successful": false,
-			"createdTimestamp": "2024-09-06T14:47:44.439Z",
-			"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
-			"attempts": [
-				{
-					"attemptID": "7833c27a-eb51-46a4-8b4d-38bec3a914e3",
-					"attemptNumber": 1,
-					"content": "Hi! What's your name?",
-					"successful": true,
-					"timestamp": "2024-09-06T14:47:44.441Z",
-					"timeTaken": 0,
-					"dialogueID": "137dc223-84c4-47b4-8d73-85dccdaf4cab"
-				}
-			]
+[
+	{
+		"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+		"startedTimestamp": "2024-09-11T14:36:49.913Z",
+		"status": "complete",
+		"pointsEarned": 25,
+		"userID": "f7eaf051-f093-418a-891d-204d2dfd40f5",
+		"scenarioID": "5666e7f1-ec04-4325-9618-b84116f9b4eb",
+		"dialogues": [
+			{
+				"dialogueID": "1912d248-8f50-42d7-8fd4-f4d6847a2bc8",
+				"by": "user",
+				"attemptsCount": 1,
+				"successful": true,
+				"createdTimestamp": "2024-09-11T14:38:03.887Z",
+				"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+				"attempts": [
+					{
+						"attemptID": "db73169e-098e-4e11-adf4-9a76da5abfd5",
+						"attemptNumber": 1,
+						"content": "Mainly how to do a reverse flip, ollies and stuff like that. What have you been up to?",
+						"successful": true,
+						"timestamp": "2024-09-11T14:38:03.899Z",
+						"timeTaken": 10,
+						"dialogueID": "1912d248-8f50-42d7-8fd4-f4d6847a2bc8"
+					}
+				]
+			},
+			{
+				"dialogueID": "22e4f75d-bd70-4cbc-a07e-1864f8e1c7c5",
+				"by": "user",
+				"attemptsCount": 1,
+				"successful": true,
+				"createdTimestamp": "2024-09-11T14:37:37.186Z",
+				"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+				"attempts": [
+					{
+						"attemptID": "7df1bf0a-5a50-46e2-83e6-58d1db1ce82a",
+						"attemptNumber": 1,
+						"content": "Not yet, but I'm making good progress. I met a new guy who's really good at some tricks last week, he's teaching me",
+						"successful": true,
+						"timestamp": "2024-09-11T14:37:37.189Z",
+						"timeTaken": 10,
+						"dialogueID": "22e4f75d-bd70-4cbc-a07e-1864f8e1c7c5"
+					}
+				]
+			},
+			{
+				"dialogueID": "41474bfa-fe0e-4d7b-a4a2-ef0b67e4c5c9",
+				"by": "system",
+				"attemptsCount": 1,
+				"successful": true,
+				"createdTimestamp": "2024-09-11T14:36:50.576Z",
+				"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+				"attempts": [
+					{
+						"attemptID": "b5025736-ce05-49db-9dfa-fa8db0f9c74e",
+						"attemptNumber": 1,
+						"content": "Hey! How's it going today? Did you do anything fun after school?",
+						"successful": true,
+						"timestamp": "2024-09-11T14:36:50.580Z",
+						"timeTaken": 0,
+						"dialogueID": "41474bfa-fe0e-4d7b-a4a2-ef0b67e4c5c9"
+					}
+				]
+			},
+			{
+				"dialogueID": "5f091482-a9fd-4cd4-a2fd-33dbda3491f8",
+				"by": "system",
+				"attemptsCount": 1,
+				"successful": true,
+				"createdTimestamp": "2024-09-11T14:37:14.907Z",
+				"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+				"attempts": [
+					{
+						"attemptID": "cffdcafe-778e-4a05-bc22-35823555b8f5",
+						"attemptNumber": 1,
+						"content": "That sounds like so much fun! Did you learn any new tricks on your roller skates?",
+						"successful": true,
+						"timestamp": "2024-09-11T14:37:14.911Z",
+						"timeTaken": 0,
+						"dialogueID": "5f091482-a9fd-4cd4-a2fd-33dbda3491f8"
+					}
+				]
+			},
+			{
+				"dialogueID": "81bfcaf8-ed9d-473b-a961-ae2ed6acc5aa",
+				"by": "user",
+				"attemptsCount": 2,
+				"successful": true,
+				"createdTimestamp": "2024-09-11T14:36:52.291Z",
+				"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+				"attempts": [
+					{
+						"attemptID": "6edf5586-d3f3-4a9c-82f9-c8959a4ce0b7",
+						"attemptNumber": 2,
+						"content": "I'm great! After school, took the roller skates out for a bit at the park!",
+						"successful": true,
+						"timestamp": "2024-09-11T14:37:13.775Z",
+						"timeTaken": 10,
+						"dialogueID": "81bfcaf8-ed9d-473b-a961-ae2ed6acc5aa"
+					},
+					{
+						"attemptID": "f550b02f-4427-4c93-bff8-86aaab123e6a",
+						"attemptNumber": 1,
+						"content": "I really like plants",
+						"successful": false,
+						"timestamp": "2024-09-11T14:36:52.293Z",
+						"timeTaken": 10,
+						"dialogueID": "81bfcaf8-ed9d-473b-a961-ae2ed6acc5aa"
+					}
+				]
+			},
+			{
+				"dialogueID": "99944d58-385b-4339-871c-00e7272f4873",
+				"by": "system",
+				"attemptsCount": 1,
+				"successful": true,
+				"createdTimestamp": "2024-09-11T14:37:38.269Z",
+				"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+				"attempts": [
+					{
+						"attemptID": "a0f54a42-e4ab-487d-9f67-dbf7ae44aea4",
+						"attemptNumber": 1,
+						"content": "That's awesome! What kind of tricks are you hoping to learn from him?",
+						"successful": true,
+						"timestamp": "2024-09-11T14:37:38.271Z",
+						"timeTaken": 0,
+						"dialogueID": "99944d58-385b-4339-871c-00e7272f4873"
+					}
+				]
+			},
+			{
+				"dialogueID": "a1f2b1f1-b13d-4df5-8831-392d1494e0c9",
+				"by": "system",
+				"attemptsCount": 1,
+				"successful": true,
+				"createdTimestamp": "2024-09-11T14:38:05.130Z",
+				"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+				"attempts": [
+					{
+						"attemptID": "78bd65bd-57ba-4ffe-8b40-34573b2e46c8",
+						"attemptNumber": 1,
+						"content": "That sounds really cool! I’ve just been hanging out with friends and playing video games. Let’s chat again soon!",
+						"successful": true,
+						"timestamp": "2024-09-11T14:38:05.135Z",
+						"timeTaken": 0,
+						"dialogueID": "a1f2b1f1-b13d-4df5-8831-392d1494e0c9"
+					}
+				]
+			},
+			{
+				"dialogueID": "fb5c3825-39f4-48a1-86fb-c534d2a834de",
+				"by": "user",
+				"attemptsCount": 1,
+				"successful": true,
+				"createdTimestamp": "2024-09-11T14:38:14.900Z",
+				"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+				"attempts": [
+					{
+						"attemptID": "e5e3ce6a-9616-45ea-a875-e2e2148d46ab",
+						"attemptNumber": 1,
+						"content": "For sure! See you tomorrow!",
+						"successful": true,
+						"timestamp": "2024-09-11T14:38:14.904Z",
+						"timeTaken": 10,
+						"dialogueID": "fb5c3825-39f4-48a1-86fb-c534d2a834de"
+					}
+				]
+			}
+		],
+		"scenario": {
+			"scenarioID": "5666e7f1-ec04-4325-9618-b84116f9b4eb",
+			"name": "Peer Conversation",
+			"backgroundImage": "peerconvo.png",
+			"description": "Talk to an AI peer from school about a random topic. Learn to engage in conversation and response naturally in peer-to-peer conversations.",
+			"modelRole": "classmate",
+			"userRole": "student",
+			"created": "2024-09-11T10:02:12.371Z"
 		},
-		{
-			"dialogueID": "9b562ede-7480-4616-b143-e174a3dfb981",
-			"by": "user",
-			"attemptsCount": 1,
-			"successful": true,
-			"createdTimestamp": "2024-09-06T14:47:46.501Z",
-			"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
-			"attempts": [
-				{
-					"attemptID": "e3a3618b-e7af-4f9e-9868-0286dd7d0081",
-					"attemptNumber": 1,
-					"content": "my name is john!",
-					"successful": true,
-					"timestamp": "2024-09-06T14:47:46.503Z",
-					"timeTaken": 10,
-					"dialogueID": "9b562ede-7480-4616-b143-e174a3dfb981"
-				}
-			]
+		"evaluation": {
+			"evaluationID": "3d0943c9-fc51-4ad6-8d95-90c561282083",
+			"listening": 85,
+			"eq": 80,
+			"tone": 90,
+			"helpfulness": 85,
+			"clarity": 95,
+			"simpleDescription": "You did a great job talking about your interests and asking questions! Keep practicing to make conversations even better.",
+			"fullDescription": "The user showed good listening skills and engaged well with the classmate. They asked relevant questions and shared personal interests, which helped maintain the flow of conversation. Encourage the user to keep practicing follow-up questions to deepen discussions. Also, remind them to occasionally check in on the other person's feelings or experiences to enhance emotional connections. Overall, they are making great progress in social interactions!",
+			"associatedGameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2"
 		},
-		{
-			"dialogueID": "cd066915-6813-475d-9117-5abd59cc39f5",
-			"by": "system",
-			"attemptsCount": 1,
-			"successful": false,
-			"createdTimestamp": "2024-09-06T14:47:46.510Z",
-			"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
-			"attempts": [
-				{
-					"attemptID": "450c05bd-5bc2-4e37-838a-ea24552a9dfc",
-					"attemptNumber": 1,
-					"content": "Nice to meet you! Where are you from?",
-					"successful": true,
-					"timestamp": "2024-09-06T14:47:46.512Z",
-					"timeTaken": 0,
-					"dialogueID": "cd066915-6813-475d-9117-5abd59cc39f5"
-				}
-			]
-		}
-	]
-}
+		"conversationLog": [
+			{
+				"by": "system",
+				"content": "Hey! How's it going today? Did you do anything fun after school?"
+			},
+			{
+				"by": "user",
+				"content": "I'm great! After school, took the roller skates out for a bit at the park!"
+			},
+			{
+				"by": "system",
+				"content": "That sounds like so much fun! Did you learn any new tricks on your roller skates?"
+			},
+			{
+				"by": "user",
+				"content": "Not yet, but I'm making good progress. I met a new guy who's really good at some tricks last week, he's teaching me"
+			},
+			{
+				"by": "system",
+				"content": "That's awesome! What kind of tricks are you hoping to learn from him?"
+			},
+			{
+				"by": "user",
+				"content": "Mainly how to do a reverse flip, ollies and stuff like that. What have you been up to?"
+			},
+			{
+				"by": "system",
+				"content": "That sounds really cool! I’ve just been hanging out with friends and playing video games. Let’s chat again soon!"
+			},
+			{
+				"by": "user",
+				"content": "For sure! See you tomorrow!"
+			}
+		]
+	}
+]
 ```
 
-Without include dialogues:
+Without all optional sub-datasets included:
 ```json
-{
-	"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
-	"startedTimestamp": "2024-09-06T14:47:44.434Z",
-	"status": "ongoing",
-	"userID": "f7eadd26-6922-4db0-a628-08d5c2afb49b",
-	"scenarioID": "39b4db53-4a1a-4c02-bf2e-46a260268500"
-}
+[
+	{
+		"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+		"startedTimestamp": "2024-09-11T14:36:49.913Z",
+		"status": "complete",
+		"pointsEarned": 25,
+		"userID": "f7eaf051-f093-418a-891d-204d2dfd40f5",
+		"scenarioID": "5666e7f1-ec04-4325-9618-b84116f9b4eb"
+	}
+]
 ```
 
 ## POST `/game/new`
@@ -603,12 +794,26 @@ Authorisation required: YES, Standard only.
 This endpoint is a bit more complex. Here are the different kinds of situations/types of responses you may encounter:
 - **Re-try prompt:** If the response you provided is inappropriate/irrelevant/inaccurate as deemed by AI, the system will ask you to re-try. The system will provide an AI-generated suggested response you can try as well.
 - **Dialogue success:** If the response you provided was appropriate, the system will move on and provide you the next AI-generated dialogue prompt. (`aiResponse`).
-- **Game complete:** If the system has no more dialogue prompts to provide, the game is marked as complete. It is no longer active. *Each conversation is only 4 AI prompts long.*
+- **Game complete:** If the system has no more dialogue prompts to provide, the game is marked as complete. It is no longer active.
+
+Take note that each game is only 4 AI prompts long, or a total of 8 dialogues from both the system and the user. The last prompt generated by the AI will intentionally sound like a conversation closer, so that the interaction can be brought to a natual end.
+
+If the final `newDialogue` request of a game is successful, the following occur in sequence:
+1. The game is marked as complete.
+2. The game is de-linked from the user's profile as the active game.
+3. Based on the entire conversation log, the AI sub-system evaluates the performance of the user across specific metric domains specified in the `GameEvaluation` table.
+4. The new evaluation data is created as a new record in the `GameEvaluation` table.
+5. Based on the gamification scheme described [here](#gamification), points are awarded to the user. The game's `pointsEarned` field is updated and the `user`'s `points` field is supplemented.
+6. A game completion response is returned to the client with the number of points earned and the simple feedback from the `GameEvaluation`.
+
+If, for some reason, the AI evaluation of the game fails, the response will just be a game completion message, which also informs the client that the AI evaluation was unfortunately unsuccessful.
+
+In this case, the client can request an AI evaluation of the game (provide the `gameID`) to [the `/game/requestEvaluation` endpoint](#post-gamerequestevaluation).
 
 Required fields:
 - `content` - Content of the dialogue attempt.
 - `timeTaken` - Time taken to utter the dialogue attempt.
-- `debugSuccess` (TEMPORARY) - Boolean value to force the system to mark the dialogue attempt as successful. Default is `false`.
+- `debugSuccess` (FOR DEBUG USE ONLY) - Boolean value to force the system to mark the dialogue attempt as successful. Default is `false`.
 
 Sample re-try success response:
 ```json
@@ -639,8 +844,21 @@ Sample dialogue success response:
 Sample game complete response:
 ```json
 {
-	"message": "SUCCESS: Conversation complete. Thanks for playing!"
+	"message": "SUCCESS: Conversation complete. Thanks for playing!",
+	"pointsEarned": 25,
+	"feedback": "You did a great job talking about your interests and asking questions! Keep practicing to make conversations even better."
 }
 ```
+
+Sample game complete response where game's AI evaluation was unsuccessful:
+```json
+{
+	"message": "SUCCESS: Conversation complete. Thanks for playing! Something went wrong in evaluating your performance. Please try again later."
+}
+```
+
+## POST `/game/requestEvaluation`
+
+
 
 © 2024 BrainBloomAI Team. All rights reserved.
