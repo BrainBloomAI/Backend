@@ -23,6 +23,30 @@ Setup requirements for server:
 - `.env` - Stores environment variables for the server to use. These include dials to control the operation of certain parts of the system as well as sensitive information such as API keys. A `.env.example` has been provided for you to quickly fill in values for variables.
 - `Node.js and NPM` - Ensure you have Node.js on your system. Run `npm install` to install all dependencies.
 
+## Cloud File Storage
+
+The powerful `FileManager` sub-system is a complex file I/O, maintenance and consistency service that allows for easy file management and storage. The service creates, manages and uses a directory called `FileStore` for all of it's operations.
+
+It is mainly used to store and retrieve background images for scenarios at the time of writing.
+
+The service can work with Firebase Cloud Storage to make for a even more robust file management for the system. By default, the service will try to connect to Firebase Cloud Storage. There are, however, contingency fallbacks in place where the service pivots to local file storage.
+
+Thus, there are two modes of operation for the system:
+- Cloud mode (Default)
+    - Connects to Firebase Cloud Storage bucket. Cloud is the ultimate source of truth, and smart on-demand principles will ensure cache efficiency and consistency of local `FileStore` directory.
+	- Will automatically fall back to local mode in the event of misconfiguration or connection issues
+	- `serviceAccountKey.json` file in root directory required.
+	- `FIRESTORAGE_ENABLED` in `.env` set to `True`.
+	- `STORAGE_URL` in `.env` set to Firebase Cloud Storage Bucket URL.
+	- `FILEMANAGER_ENABLED` in `.env` set to `True`.
+- Local mode
+	- Standard local file storage and management is used. No external dependencies.
+	- Will be backup option if cloud mode fails.
+	- `FILEMANAGER_ENABLED` in `.env` set to `True`.
+	- Can be configured to be the primary mode of operation by setting `FILEMANAGER_MODE` to `True` in the `.env` file.
+
+The `serviceAccountKey.json` file is a Firebase service account private key. Obtain it by logging onto the Firebase console, navigating to Project Settings > Service Accounts > Generate New Private Key. Rename the file to `serviceAccountKey.json` and place it in the root directory.
+
 ## Database Configuration
 
 You can use the following configuration template (or alternatively copy from `boilerplateConfig.json`) to add/update configurations in your `config.json`.
