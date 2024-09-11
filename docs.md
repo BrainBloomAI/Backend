@@ -528,6 +528,8 @@ Optional fields:
 
 Sample multi-part request body:
 
+<img width="594" alt="Screenshot 2024-09-12 at 12 51 14 AM" src="https://github.com/user-attachments/assets/ba70bf2f-6198-4bbc-bc1d-4a6c69a11d92">
+
 Sample success response:
 ```json
 {
