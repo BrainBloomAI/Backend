@@ -502,11 +502,43 @@ Sample success response:
 	"message": "SUCCESS: Scenario created successfully.",
 	"newScenario": {
 		"scenarioID": "6cf6f2cf-eb54-4e21-9d1c-0576ab5cd92b",
-		"name": "helloworld",
+		"name": "SampleNewScenario",
 		"backgroundImage": "e049ce3d-82e3-4b07-9bed-552e265e2e53.png",
-		"description": "HAHAHAH",
-		"modelRole": "mother",
-		"userRole": "taylorswift",
+		"description": "This is a sample scenario.",
+		"modelRole": "Mother",
+		"userRole": "John",
+		"created": "2024-09-11T07:13:38.316Z"
+	}
+}
+```
+
+## POST `/scenario/update`
+
+Authorisation required: YES, Staff only.
+
+Required fields:
+- `scenarioID` - ID of the scenario to update.
+
+Optional fields:
+- `name` - Name of the scenario.
+- `description` - Description of the scenario.
+- `image` - Image file of the background image for this scenario.
+- `modelRole` - Role of the AI model in the scenario.
+- `userRole` - Role of the user in the scenario.
+
+Sample multi-part request body:
+
+Sample success response:
+```json
+{
+	"message": "SUCCESS: Scenario updated successfully.",
+	"newScenario": {
+		"scenarioID": "6cf6f2cf-eb54-4e21-9d1c-0576ab5cd92b",
+		"name": "SampleNewScenario",
+		"backgroundImage": "467e864a-11f1-4dbc-9533-25ad45b5f945.jpg",
+		"description": "This is a sample scenario.",
+		"modelRole": "Mother",
+		"userRole": "Oliver",
 		"created": "2024-09-11T07:13:38.316Z"
 	}
 }
