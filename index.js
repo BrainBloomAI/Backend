@@ -3,24 +3,24 @@ const express = require('express');
 const cors = require('cors');
 const db = require('./models');
 const { User, Scenario, Game, GameDialogue, DialogueAttempt, GameEvaluation } = db;
-const { Encryption, OpenAIChat } = require('./services');
+const { Universal, Logger, Cache, FileManager, Encryption, OpenAIChat } = require('./services');
 require('dotenv').config()
 
 const env = process.env.DB_CONFIG || 'development';
 const config = require('./config/config.json')[env];
 
 // Set up services
-const Universal = require('./services/Universal')
-
-const Logger = require('./services/Logger')
 Logger.setup()
 
-const Cache = require('./services/Cache')
 Cache.load();
 
 if (Cache.get("usageLock") == undefined) {
     Cache.set("usageLock", false)
 }
+
+FileManager.setup()
+    .then(res => { if (res !== true) { throw new Error(res) } })
+    .catch(err => { Logger.logAndThrow(err) })
 
 if (OpenAIChat.checkPermission()) {
     console.log("MAIN: OpenAI Chat service is enabled.")

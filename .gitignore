@@ -8,3 +8,5 @@ sqlQueries.txt
 package-lock.json
 database.sqlite
 .vscode/
+serviceAccountKey.json
+FileStore/
