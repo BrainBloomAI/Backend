@@ -11,7 +11,7 @@ require('dotenv').config()
  */
 class BootCheck {
     static check() {
-        let requiredVariables = ["SERVER_PORT", "DB_MODE", "FIRESTORAGE_ENABLED", "STORAGE_BUCKET_URL", "FILEMANAGER_ENABLED"]
+        let requiredVariables = ["SERVER_PORT", "DB_MODE", "OPENAI_CHAT_ENABLED", "OPENAI_API_KEY", "FIRESTORAGE_ENABLED", "STORAGE_BUCKET_URL", "FILEMANAGER_ENABLED"]
         for (let variable of requiredVariables) {
             if (process.env[variable] === undefined) {
                 throw new Error(`Environment variable ${variable} is not set.`)
@@ -31,7 +31,7 @@ class BootCheck {
             }
         }
 
-        let optionalVariables = ["LOGGING_ENABLED", "DEBUG_MODE", "OPENAI_API_KEY"]
+        let optionalVariables = ["LOGGING_ENABLED", "DEBUG_MODE", "FILEMANAGER_MODE"]
         for (let variable of optionalVariables) {
             if (process.env[variable] !== undefined) {
                 optionalVariables = optionalVariables.filter(v => v !== variable)
