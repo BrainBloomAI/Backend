@@ -134,6 +134,7 @@ router.post('/enforceDefaults', authoriseStaff, async (req, res) => {
         }
 
         Logger.log(`SCENARIO ENFORCEDEFAULTS: Default scenarios enforced by '${staffUser.username}'.`);
+        return res.send('SUCCESS: Default scenarios enforced successfully.');
     } catch (err) {
         Logger.log(`SCENARIO ENFORCEDEFAULTS ERROR: Failed to enforce scenario defaults; error: ${err}`);
         return res.status(500).send('ERROR: Failed to enforce scenario defaults.');
