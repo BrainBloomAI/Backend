@@ -636,29 +636,43 @@ router.post('/newDialogue', authorise, async (req, res) => {
                 }
 
                 var evaluation;
-                try {
-                    evaluation = await GameEvaluation.create({
-                        evaluationID: Universal.generateUniqueID(),
-                        associatedGameID: game.gameID,
-                        listening: gameEvaluationData.scores.listening,
-                        eq: gameEvaluationData.scores.emotionalIntelligence,
-                        tone: gameEvaluationData.scores.tone,
-                        helpfulness: gameEvaluationData.scores.helpfulness,
-                        clarity: gameEvaluationData.scores.clarity,
-                        simpleDescription: gameEvaluationData.descriptions.userFeedback,
-                        fullDescription: gameEvaluationData.descriptions.staffFeedback
-                    })
-                    if (!evaluation) {
-                        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to create evaluation for user with ID '${user.userID}'.`);
+                if (!errorsOccurred) {
+                    try {
+                        evaluation = await GameEvaluation.create({
+                            evaluationID: Universal.generateUniqueID(),
+                            associatedGameID: game.gameID,
+                            listening: gameEvaluationData.scores.listening,
+                            eq: gameEvaluationData.scores.emotionalIntelligence,
+                            tone: gameEvaluationData.scores.tone,
+                            helpfulness: gameEvaluationData.scores.helpfulness,
+                            clarity: gameEvaluationData.scores.clarity,
+                            simpleDescription: gameEvaluationData.descriptions.userFeedback,
+                            fullDescription: gameEvaluationData.descriptions.staffFeedback
+                        })
+                        if (!evaluation) {
+                            Logger.log(`GAME NEWDIALOGUE ERROR: Failed to create evaluation for user with ID '${user.userID}'.`);
+                            errorsOccurred = true;
+                        }
+                    } catch (err) {
+                        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to create evaluation for user with ID '${user.userID}'; error: ${err}`);
                         errorsOccurred = true;
                     }
-                } catch (err) {
-                    Logger.log(`GAME NEWDIALOGUE ERROR: Failed to create evaluation for user with ID '${user.userID}'; error: ${err}`);
-                    errorsOccurred = true;
                 }
 
                 if (!errorsOccurred) {
                     const pointsEarned = calculatePointsEarned(game, evaluation);
+
+                    try {
+                        game.pointsEarned = pointsEarned;
+                        await game.save();
+
+                        user.points += pointsEarned;
+                        await user.save();
+                    } catch (err) {
+                        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to update game and user points for user with ID '${user.userID}'; error: ${err}`);
+                        return res.status(500).send(`ERROR: Failed to process request.`);
+                    }
+
                     return res.send({
                         message: "SUCCESS: Conversation complete. Thanks for playing!",
                         pointsEarned: pointsEarned,
@@ -761,6 +775,99 @@ router.post('/newDialogue', authorise, async (req, res) => {
             suggestedAIResponse: suggestedAIResponse
         })
     }
+})
+
+router.post('/requestEvaluation', authorise, async (req, res) => {
+    var user;
+    try {
+        user = await User.findByPk(req.userID);
+    } catch (err) {
+        Logger.log(`GAME REQUESTEVALUATION ERROR: Failed to fetch user; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+
+    const { gameID } = req.body;
+    if (!gameID) {
+        return res.status(400).send(`ERROR: One or more required payloads not provided.`);
+    }
+
+    var game;
+    try {
+        game = await getFullGame(gameID, false, true, true, true, true);
+        if (!game) {
+            return res.status(404).send(`ERROR: Game not found.`);
+        }
+    } catch (err) {
+        Logger.log(`GAME REQUESTEVALUATION ERROR: Failed to find game; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+
+    if (game.status !== "complete") {
+        return res.status(400).send('ERROR: Only complete games can be evaluated.');
+    }
+    if (game.evaluation && user.role !== "staff") {
+        return res.status(400).send('ERROR: Game has already been evaluated.');
+    }
+
+    // Conduct AI evaluation
+    var gameEvaluationData;
+    try {
+        gameEvaluationData = await OpenAIChat.evaluateConversation({ conversationLog: Extensions.prepGameDialogueForAI(game) }, Extensions.prepScenarioForAI(game.scenario));
+        if (!gameEvaluationData) {
+            Logger.log(`GAME REQUESTEVALUATION ERROR: Failed to evaluate game with ID '${game.gameID}'.`);
+            return res.status(500).send('ERROR: Failed to process request.');
+        }
+    } catch (err) {
+        Logger.log(`GAME REQUESTEVALUATION ERROR: Failed to evaluate game with ID '${game.gameID}'; error: ${err}`);
+        return res.status(500).send('ERROR: Failed to process request.');
+    }
+
+    var evaluation;
+    try {
+        evaluation = await GameEvaluation.create({
+            evaluationID: Universal.generateUniqueID(),
+            associatedGameID: game.gameID,
+            listening: gameEvaluationData.scores.listening,
+            eq: gameEvaluationData.scores.emotionalIntelligence,
+            tone: gameEvaluationData.scores.tone,
+            helpfulness: gameEvaluationData.scores.helpfulness,
+            clarity: gameEvaluationData.scores.clarity,
+            simpleDescription: gameEvaluationData.descriptions.userFeedback,
+            fullDescription: gameEvaluationData.descriptions.staffFeedback
+        })
+        if (!evaluation) {
+            Logger.log(`GAME REQUESTEVALUATION ERROR: Failed to create evaluation for game with ID ${game.gameID}.`);
+            return res.status(500).send('ERROR: Failed to process request.');
+        }
+    } catch (err) {
+        Logger.log(`GAME REQUESTEVALUATION ERROR: Failed to create evaluation for user with ID '${user.userID}'; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+
+    const pointsEarned = calculatePointsEarned(game, evaluation);
+
+    try {
+        game.pointsEarned = pointsEarned;
+        await game.save();
+
+        if (game.userID === user.userID) {
+            user.points += pointsEarned;
+            await user.save();
+        } else {
+            const targetUser = await User.findByPk(game.userID);
+            targetUser.points += pointsEarned;
+            await targetUser.save();
+        }
+    } catch (err) {
+        Logger.log(`GAME REQUESTEVALUATION ERROR: Failed to update game and user points for user with ID '${user.userID}'; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+
+    return res.send({
+        message: "SUCCESS: Evaluation complete.",
+        pointsEarned: pointsEarned,
+        feedback: evaluation.simpleDescription
+    });
 })
 
 module.exports = { router, at: '/game' };
