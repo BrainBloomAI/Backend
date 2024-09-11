@@ -12,6 +12,7 @@ Table of Contents:
 - [Database Schemas](#database-schemas)
 - [Authentication Flow](#authentication-flow)
 - [Gamification](#gamification)
+- [Miscellaneous](#miscellaneous)
 - [Identity Management](#identity-management)
 - [Staff Management](#staff-management)
 - [Game Management](#game-management)
