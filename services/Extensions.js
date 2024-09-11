@@ -79,18 +79,30 @@ class Extensions {
      * 
      * @param {Model} fullGame 
      */
-    static prepGameDialogueForAI(fullGame, mapToScenarioRoles=true) {
+    static prepGameDialogueForAI(fullGame, mapToScenarioRoles = true, includeFailedAttempts = false) {
         const sortedDialogues = fullGame.dialogues.map(d => d.toJSON()).sort((a, b) => {
             return new Date(a.createdTimestamp) - new Date(b.createdTimestamp)
         })
 
         var conversationLog = []
         sortedDialogues.forEach(dialogue => {
-            const successfulAttempt = dialogue.attempts.find(a => a.successful)
-            if (successfulAttempt) {
-                conversationLog.push({
-                    by: mapToScenarioRoles ? (dialogue.by == 'user' ? fullGame.scenario.userRole : fullGame.scenario.modelRole) : dialogue.by,
-                    content: successfulAttempt.content
+            if (!includeFailedAttempts) {
+                const successfulAttempt = dialogue.attempts.find(a => a.successful)
+                if (successfulAttempt) {
+                    conversationLog.push({
+                        by: mapToScenarioRoles ? (dialogue.by == 'user' ? fullGame.scenario.userRole : fullGame.scenario.modelRole) : dialogue.by,
+                        content: successfulAttempt.content
+                    })
+                }
+            } else {
+                const sortedAttempts = dialogue.attempts.sort((a, b) => {
+                    return new Date(a.timestamp) - new Date(b.timestamp)
+                })
+                sortedAttempts.forEach(attempt => {
+                    conversationLog.push({
+                        by: mapToScenarioRoles ? (dialogue.by == 'user' ? fullGame.scenario.userRole : fullGame.scenario.modelRole) : dialogue.by,
+                        content: attempt.content
+                    })
                 })
             }
         })

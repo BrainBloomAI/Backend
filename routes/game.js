@@ -211,7 +211,7 @@ router.get("/", authorise, async (req, res) => {
                 return res.status(404).send('ERROR: Game not found.');
             }
 
-            if (fullGame.userID !== user.userID && !staffUser) {
+            if (user && !staffUser && fullGame.userID !== user.userID) {
                 return res.status(403).send('ERROR: Insufficient permissions.');
             }
 
@@ -663,7 +663,7 @@ router.post('/newDialogue', authorise, async (req, res) => {
                 // Conduct AI evaluation of game
                 var gameEvaluationData;
                 try {
-                    gameEvaluationData = await OpenAIChat.evaluateConversation({ conversationLog: Extensions.prepGameDialogueForAI(game) }, Extensions.prepScenarioForAI(game.scenario));
+                    gameEvaluationData = await OpenAIChat.evaluateConversation({ conversationLog: Extensions.prepGameDialogueForAI(game, false, true) }, Extensions.prepScenarioForAI(game.scenario));
                     if (!gameEvaluationData) {
                         Logger.log(`GAME NEWDIALOGUE ERROR: Failed to evaluate conversation for user with ID '${user.userID}'; null value returned.`);
                         errorsOccurred = true;
@@ -850,7 +850,7 @@ router.post('/requestEvaluation', authorise, async (req, res) => {
     // Conduct AI evaluation
     var gameEvaluationData;
     try {
-        gameEvaluationData = await OpenAIChat.evaluateConversation({ conversationLog: Extensions.prepGameDialogueForAI(game) }, Extensions.prepScenarioForAI(game.scenario));
+        gameEvaluationData = await OpenAIChat.evaluateConversation({ conversationLog: Extensions.prepGameDialogueForAI(game, false, true) }, Extensions.prepScenarioForAI(game.scenario));
         if (!gameEvaluationData) {
             Logger.log(`GAME REQUESTEVALUATION ERROR: Failed to evaluate game with ID '${game.gameID}'.`);
             return res.status(500).send('ERROR: Failed to process request.');
