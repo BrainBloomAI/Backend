@@ -202,7 +202,16 @@ Steps to authenticate:
 
 # Gamification
 
+Users of BrainBloomAI are encouraged to play more games and keep their training up through a points-based incentive program.
 
+After completing games, based on how well they did in the game, points will be awarded to the user's profile. These points can be redeemed for badges or other rewards (not implemented yet).
+
+Points are awarded based on the following criteria:
+- Game completion: 10 points
+- Zero failed attempts in an entire game: 5 points
+- Passing evaluation metrics (> 80): 3 points/metric (15 points maximum)
+
+This means that the user can earn a maximum of 30 points per completed game.
 
 # Identity Management
 
