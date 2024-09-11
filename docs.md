@@ -211,7 +211,7 @@ Points are awarded based on the following criteria:
 - Zero failed attempts in an entire game: 5 points
 - Passing evaluation metrics (> 80): 3 points/metric (15 points maximum)
 
-This means that the user can earn a maximum of 30 points per completed game.
+This means that the user can earn a maximum of 30 points per completed game. Total points are stored in the `points` field of the `User` model.
 
 # Identity Management
 
