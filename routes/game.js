@@ -557,9 +557,6 @@ router.post('/newDialogue', authorise, async (req, res) => {
             Logger.log(`GAME NEWDIALOGUE ERROR: Failed to evaluate attempt for user with ID '${user.userID}'; error: ${err}`);
             return res.status(500).send(`ERROR: Failed to process request.`);
         }
-
-        // console.log(`Evaluation result for attempt text '${content}':`)
-        // console.log(evaluationData)
     }
 
     const responseMode = req.body.debugSuccess === true ? "success" : (evaluationData.evaluationResponse ? "success" : "retry"); // "retry" or "success"
@@ -596,9 +593,6 @@ router.post('/newDialogue', authorise, async (req, res) => {
                         Logger.log(`GAME NEWDIALOGUE ERROR: Failed to evaluate conversation for user with ID '${user.userID}'; null value returned.`);
                         return;
                     }
-
-                    // console.log("Received evaluation data:")
-                    // console.log(gameEvaluationData)
                 } catch (err) {
                     Logger.log(`GAME NEWDIALOGUE ERROR: Failed to evaluate conversation for user with ID '${user.userID}'; error: ${err}`);
                     return;
@@ -659,8 +653,6 @@ router.post('/newDialogue', authorise, async (req, res) => {
                 })
             } else {
                 // Generate AI follow-up dialogue
-                // console.log("Using following conversation log to generate AI follow up:")
-                // console.log(Extensions.prepGameDialogueForAI(game))
 
                 var generatedAIFollowUp;
                 try {
