@@ -33,6 +33,11 @@ module.exports = (sequelize, DataTypes) => {
                 isIn: [['standard', 'staff']]
             }
         },
+        points: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
         created: {
             type: DataTypes.STRING,
             allowNull: false

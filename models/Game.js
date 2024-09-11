@@ -21,6 +21,10 @@ module.exports = (sequelize, DataTypes) => {
         status: {
             type: DataTypes.STRING,
             allowNull: false
+        },
+        pointsEarned: {
+            type: DataTypes.INTEGER,
+            allowNull: true
         }
     }, { tableName: 'games' });
 
