@@ -79,7 +79,7 @@ class Extensions {
      * 
      * @param {Model} fullGame 
      */
-    static prepGameDialogueForAI(fullGame) {
+    static prepGameDialogueForAI(fullGame, mapToScenarioRoles=true) {
         const sortedDialogues = fullGame.dialogues.map(d => d.toJSON()).sort((a, b) => {
             return new Date(a.createdTimestamp) - new Date(b.createdTimestamp)
         })
@@ -89,7 +89,7 @@ class Extensions {
             const successfulAttempt = dialogue.attempts.find(a => a.successful)
             if (successfulAttempt) {
                 conversationLog.push({
-                    by: dialogue.by == 'user' ? fullGame.scenario.userRole : fullGame.scenario.modelRole,
+                    by: mapToScenarioRoles ? (dialogue.by == 'user' ? fullGame.scenario.userRole : fullGame.scenario.modelRole) : dialogue.by,
                     content: successfulAttempt.content
                 })
             }

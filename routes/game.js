@@ -173,11 +173,12 @@ router.get("/", authorise, async (req, res) => {
         return res.status(500).send(`ERROR: Failed to process request.`);
     }
 
-    var { activeGame, gameID, includeDialogues, includeScenario, includeEvaluation, targetUsername } = req.query;
+    var { activeGame, gameID, includeDialogues, includeScenario, includeEvaluation, includeSimpleConversationLog, targetUsername } = req.query;
     activeGame = activeGame === "true";
     includeDialogues = includeDialogues === "true";
     includeScenario = includeScenario === "true";
     includeEvaluation = includeEvaluation === "true";
+    includeSimpleConversationLog = includeSimpleConversationLog === "true";
 
     var staffUser;
     if (user.role == "staff") {
@@ -205,7 +206,7 @@ router.get("/", authorise, async (req, res) => {
     try {
         if (gameID) {
             // Any user requesting specific game
-            const fullGame = await getFullGame(gameID, false, includeDialogues === true, includeDialogues === true, includeScenario === true, includeEvaluation === true);
+            const fullGame = await getFullGame(gameID, false, includeDialogues || includeSimpleConversationLog, includeDialogues || includeSimpleConversationLog, includeScenario, includeEvaluation);
             if (!fullGame) {
                 return res.status(404).send('ERROR: Game not found.');
             }
@@ -214,14 +215,22 @@ router.get("/", authorise, async (req, res) => {
                 return res.status(403).send('ERROR: Insufficient permissions.');
             }
 
-            return res.send(Extensions.sanitiseData(fullGame.toJSON(), [], ["createdAt", "updatedAt"]));
+            var data = Extensions.sanitiseData(fullGame.toJSON(), [], ["createdAt", "updatedAt"]);
+            if (includeSimpleConversationLog) {
+                data.conversationLog = Extensions.prepGameDialogueForAI(fullGame, false);
+                if (!includeDialogues) {
+                    delete data.dialogues;
+                }
+            }
+
+            return res.send(data);
         } else if (activeGame === true && !staffUser) {
             // Standard user requesting active game
             if (!user.activeGame) {
                 return res.status(404).send('ERROR: No active game found.');
             }
 
-            const fullGame = await getFullGame(user.activeGame, false, includeDialogues === true, includeDialogues === true, includeScenario === true, includeEvaluation === true);
+            const fullGame = await getFullGame(user.activeGame, false, includeDialogues || includeSimpleConversationLog, includeDialogues || includeSimpleConversationLog, includeScenario, includeEvaluation);
             if (!fullGame) {
                 return res.status(404).send('ERROR: Game not found.');
             }
@@ -233,11 +242,19 @@ router.get("/", authorise, async (req, res) => {
                 return res.status(403).send('ERROR: Insufficient permissions.');
             }
 
-            return res.send(Extensions.sanitiseData(fullGame.toJSON(), [], ["createdAt", "updatedAt"]));
+            var data = Extensions.sanitiseData(fullGame.toJSON(), [], ["createdAt", "updatedAt"])
+            if (includeSimpleConversationLog) {
+                data.conversationLog = Extensions.prepGameDialogueForAI(fullGame, false);
+                if (!includeDialogues) {
+                    delete data.dialogues;
+                }
+            }
+
+            return res.send(data);
         } else if (user) {
             // Standard user requesting all games or staff user requesting all games for a specific user
             const includeObject = [];
-            if (includeDialogues === true) {
+            if (includeDialogues || includeSimpleConversationLog) {
                 includeObject.push({
                     model: GameDialogue,
                     as: "dialogues",
@@ -249,13 +266,13 @@ router.get("/", authorise, async (req, res) => {
                     order: [["createdAt", "ASC"]]
                 })
             }
-            if (includeScenario === true) {
+            if (includeScenario) {
                 includeObject.push({
                     model: Scenario,
                     as: "scenario"
                 })
             }
-            if (includeEvaluation === true) {
+            if (includeEvaluation) {
                 includeObject.push({
                     model: GameEvaluation,
                     as: 'evaluation'
@@ -273,12 +290,22 @@ router.get("/", authorise, async (req, res) => {
                 return res.status(404).send('ERROR: No games found.');
             }
 
-            const gamesJSON = games.map(game => Extensions.sanitiseData(game.toJSON(), [], ["createdAt", "updatedAt"]));
+            const gamesJSON = games.map(game => {
+                var data = Extensions.sanitiseData(game.toJSON(), [], ["createdAt", "updatedAt"]);
+                if (includeSimpleConversationLog) {
+                    data.conversationLog = Extensions.prepGameDialogueForAI(game, false);
+                    if (!includeDialogues) {
+                        delete data.dialogues;
+                    }
+                }
+                return data;
+            });
+
             return res.send(gamesJSON);
         } else if (staffUser) {
             // Staff user requesting all games
             const includeObject = [];
-            if (includeDialogues === true) {
+            if (includeDialogues || includeSimpleConversationLog) {
                 includeObject.push({
                     model: GameDialogue,
                     as: "dialogues",
@@ -290,13 +317,13 @@ router.get("/", authorise, async (req, res) => {
                     order: [["createdAt", "ASC"]]
                 })
             }
-            if (includeScenario === true) {
+            if (includeScenario) {
                 includeObject.push({
                     model: Scenario,
                     as: "scenario"
                 })
             }
-            if (includeEvaluation === true) {
+            if (includeEvaluation) {
                 includeObject.push({
                     model: GameEvaluation,
                     as: 'evaluation'
@@ -311,7 +338,17 @@ router.get("/", authorise, async (req, res) => {
                 return res.status(404).send('ERROR: No games found.');
             }
 
-            const gamesJSON = games.map(game => Extensions.sanitiseData(game.toJSON(), [], ["createdAt", "updatedAt"]));
+            const gamesJSON = games.map(game => {
+                var data = Extensions.sanitiseData(game.toJSON(), [], ["createdAt", "updatedAt"]);
+                if (includeSimpleConversationLog) {
+                    data.conversationLog = Extensions.prepGameDialogueForAI(game, false);
+                    if (!includeDialogues) {
+                        delete data.dialogues;
+                    }
+                }
+                return data;
+            });
+
             return res.send(gamesJSON);
         } else {
             return res.status(400).send('ERROR: Abnormal payload provided.')
