@@ -44,7 +44,7 @@ Thus, there are two modes of operation for the system:
 	- Standard local file storage and management is used. No external dependencies.
 	- Will be backup option if cloud mode fails.
 	- `FILEMANAGER_ENABLED` in `.env` set to `True`.
-	- Can be configured to be the primary mode of operation by setting `FILEMANAGER_MODE` to `True` in the `.env` file.
+	- Can be configured to be the primary mode of operation by setting `FILEMANAGER_MODE` to `local` in the `.env` file. Default is `cloud`.
 
 The `serviceAccountKey.json` file is a Firebase service account private key. Obtain it by logging onto the Firebase console, navigating to Project Settings > Service Accounts > Generate New Private Key. Rename the file to `serviceAccountKey.json` and place it in the root directory.
 
