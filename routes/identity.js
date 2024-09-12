@@ -7,6 +7,21 @@ const { authorise } = require('../middleware/auth');
 
 const router = express.Router();
 
+router.get('/', authorise, async (req, res) => {
+    try {
+        const user = await User.findByPk(req.userID);
+        
+        return res.send(Extensions.sanitiseData(
+            user.toJSON(),
+            [],
+            ["password", "authToken"]
+        ))
+    } catch (err) {
+        Logger.log(`IDENTITY IDENTITY ERROR: Failed to retrieve identity; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+})
+
 router.post('/new', async (req, res) => {
     const schema = yup.object().shape({
         username: yup.string().trim().min(1).required(),
@@ -134,6 +149,97 @@ router.post('/refreshSession', authorise, async (req, res) => {
         return res.status(200).send(`SUCCESS: Session refreshed. Authentication Token: ${user.authToken}`);
     } catch (err) {
         Logger.log(`IDENTITY REFRESHSESSION ERROR: Failed to refresh session; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+})
+
+router.post('/update', authorise, async (req, res) => {
+    var user;
+    try {
+        user = await User.findByPk(req.userID);
+    } catch (err) {
+        Logger.log(`IDENTITY UPDATE ERROR: Failed to retrieve user; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+
+    const schema = yup.object().shape({
+        username: yup.string().trim().min(1).optional(),
+        email: yup.string().trim().email().optional()
+    })
+
+    var validatedData;
+    try {
+        validatedData = schema.validateSync(req.body, { abortEarly: false });
+    } catch (err) {
+        const validationErrors = err.errors.join(' ');
+        return res.status(400).send(`ERROR: ${validationErrors}`);
+    }
+
+    if (!validatedData.username && !validatedData.email) {
+        return res.send('SUCCESS: Nothing to update.')
+    }
+
+    try {
+        if (validatedData.username) {
+            if (await User.findOne({ where: { username: validatedData.username } })) {
+                return res.status(400).send(`UERROR: Username already in use.`);
+            }
+            user.username = validatedData.username;
+        }
+
+        if (validatedData.email) {
+            if (await User.findOne({ where: { email: validatedData.email } })) {
+                return res.status(400).send(`UERROR: Email address already in use.`);
+            }
+            user.email = validatedData.email;
+        }
+
+        await user.save();
+
+        Logger.log(`IDENTITY UPDATE: User '${user.username}' updated.`);
+        return res.status(200).send(`SUCCESS: Account updated successfully.`);
+    } catch (err) {
+        Logger.log(`IDENTITY UPDATE ERROR: Failed to update account; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+})
+
+router.post('/changePassword', authorise, async (req, res) => {
+    var user;
+    try {
+        user = await User.findByPk(req.userID);
+    } catch (err) {
+        Logger.log(`IDENTITY CHANGEPASSWORD ERROR: Failed to retrieve user; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword || typeof oldPassword !== 'string' || typeof newPassword !== 'string') {
+        return res.status(400).send(`ERROR: One or more required payloads not provided.`);
+    }
+    if (newPassword.length < 8) {
+        return res.status(400).send(`ERROR: New password must be at least 8 characters long.`);
+    }
+
+    // Validate current password
+    try {
+        if (!await Encryption.compare(oldPassword, user.password)) {
+            return res.status(401).send(`UERROR: Invalid password.`);
+        }
+    } catch (err) {
+        Logger.log(`IDENTITY CHANGEPASSWORD ERROR: Failed to validate password; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+
+    // Update password
+    try {
+        user.password = await Encryption.hash(newPassword);
+        await user.save();
+
+        Logger.log(`IDENTITY CHANGEPASSWORD: Password changed for user '${user.username}'.`);
+        return res.status(200).send(`SUCCESS: Password changed successfully.`);
+    } catch (err) {
+        Logger.log(`IDENTITY CHANGEPASSWORD ERROR: Failed to change password; error: ${err}`);
         return res.status(500).send(`ERROR: Failed to process request.`);
     }
 })
