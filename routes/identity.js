@@ -181,6 +181,10 @@ router.post('/update', authorise, async (req, res) => {
 
     try {
         if (validatedData.username) {
+            if (validatedData.username == user.username) {
+                return res.status(400).send(`ERROR: New username must be different from current username.`);
+            }
+
             if (await User.findOne({ where: { username: validatedData.username } })) {
                 return res.status(400).send(`UERROR: Username already in use.`);
             }
@@ -188,6 +192,9 @@ router.post('/update', authorise, async (req, res) => {
         }
 
         if (validatedData.email) {
+            if (validatedData.email == user.email) {
+                return res.status(400).send(`ERROR: New email must be different from current email.`);
+            }
             if (await User.findOne({ where: { email: validatedData.email } })) {
                 return res.status(400).send(`UERROR: Email address already in use.`);
             }
@@ -217,6 +224,9 @@ router.post('/changePassword', authorise, async (req, res) => {
     if (!oldPassword || !newPassword || typeof oldPassword !== 'string' || typeof newPassword !== 'string') {
         return res.status(400).send(`ERROR: One or more required payloads not provided.`);
     }
+    if (oldPassword == newPassword) {
+        return res.status(400).send(`ERROR: New password must be different from current password.`);
+    }
     if (newPassword.length < 8) {
         return res.status(400).send(`ERROR: New password must be at least 8 characters long.`);
     }
@@ -234,10 +244,11 @@ router.post('/changePassword', authorise, async (req, res) => {
     // Update password
     try {
         user.password = await Encryption.hash(newPassword);
+        user.authToken = null;
         await user.save();
 
         Logger.log(`IDENTITY CHANGEPASSWORD: Password changed for user '${user.username}'.`);
-        return res.status(200).send(`SUCCESS: Password changed successfully.`);
+        return res.status(200).send(`SUCCESS: Password changed successfully. Please re-login.`);
     } catch (err) {
         Logger.log(`IDENTITY CHANGEPASSWORD ERROR: Failed to change password; error: ${err}`);
         return res.status(500).send(`ERROR: Failed to process request.`);

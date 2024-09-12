@@ -231,6 +231,35 @@ GET /cdn/retail.png
 
 Endpoints at `/identity` offer comprehensive user management functionality.
 
+## GET `/identity`
+
+Authorisation required: YES
+
+No required body fields.
+
+Sample success response:
+```json
+{
+	"userID": "88dcab50-25c5-42b7-b455-66bc4237cee5",
+	"username": "John",
+	"email": "user@example.com",
+	"role": "standard",
+	"points": 135,
+	"created": "2024-09-11T15:40:26.497Z",
+	"lastLogin": "2024-09-12T11:24:35.527Z",
+	"activeGame": null,
+	"mindsListening": null,
+	"mindsEQ": null,
+	"mindsTone": null,
+	"mindsHelpfulness": null,
+	"mindsClarity": null,
+	"mindsAssessment": null,
+	"banned": false,
+	"createdAt": {},
+	"updatedAt": {}
+}
+```
+
 ## POST `/identity/new`
 
 Authorisation required: NONE
@@ -311,6 +340,50 @@ No required body fields.
 Sample success response:
 ```
 SUCCESS: Session refreshed. Authentication Token: AAAAAAAAAA
+```
+
+## POST `/identity/update`
+
+Authorisation required: YES
+
+Available request body fields:
+- `username` - Must be unique. Can be omitted if not changing.
+- `email` - Must be unique. Can be omitted if not changing.
+
+Sample request body:
+```json
+{
+	"username": "johndoe",
+	"email": "email@example.com"
+}
+```
+
+Sample success response:
+```
+SUCCESS: Account updated successfully.
+```
+
+## POST `/identity/changePassword`
+
+Authorisation required: YES
+
+Note that re-login is required upon successful password change.
+
+Required fields:
+- `oldPassword` - Old password of the user.
+- `newPassword` - New password of the user. Must be at least 8 characters long.
+
+Sample request body:
+```json
+{
+	"oldPassword": "12345678",
+	"newPassword": "87654321"
+}
+```
+
+Sample success response:
+```
+SUCCESS: Password changed successfully. Please re-login.
 ```
 
 ## POST `/identity/delete`
