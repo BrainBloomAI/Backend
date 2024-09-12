@@ -254,9 +254,7 @@ Sample success response:
 	"mindsHelpfulness": null,
 	"mindsClarity": null,
 	"mindsAssessment": null,
-	"banned": false,
-	"createdAt": {},
-	"updatedAt": {}
+	"banned": false
 }
 ```
 

@@ -14,7 +14,7 @@ router.get('/', authorise, async (req, res) => {
         return res.send(Extensions.sanitiseData(
             user.toJSON(),
             [],
-            ["password", "authToken"]
+            ["password", "authToken", "createdAt", "updatedAt"]
         ))
     } catch (err) {
         Logger.log(`IDENTITY IDENTITY ERROR: Failed to retrieve identity; error: ${err}`);
