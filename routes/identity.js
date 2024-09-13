@@ -255,7 +255,7 @@ router.post('/changePassword', authorise, async (req, res) => {
     }
 })
 
-router.delete('/delete', authorise, async (req, res) => {
+router.post('/delete', authorise, async (req, res) => {
     try {
         const requestingUser = await User.findByPk(req.userID);
         if (requestingUser.role == "standard") {

@@ -440,6 +440,32 @@ Sample success response:
 ]
 ```
 
+## POST `/staff/view/<clientID>`
+
+Authorisation required: YES, Staff only.
+
+No required body fields, but client ID must be provided in the URL. Example: `${origin}/staff/view/98c7c6c6-99e5-4a96-8914-6f75fdc4de2c`.
+
+Sample success response:
+```json
+{
+	"userID": "d6a66b23-e7fa-49b7-8e13-d49bf4f60b52",
+	"username": "someuser2",
+	"email": "email@example.com",
+	"points": 0,
+	"created": "2024-09-13T11:52:15.806Z",
+	"lastLogin": "2024-09-13T11:52:15.806Z",
+	"activeGame": null,
+	"mindsListening": null,
+	"mindsEQ": null,
+	"mindsTone": null,
+	"mindsHelpfulness": null,
+	"mindsClarity": null,
+	"mindsAssessment": null,
+	"banned": false
+}
+```
+
 ## POST `/staff/banClient`
 
 Authorisation required: YES, Staff only.
@@ -617,7 +643,7 @@ Sample success response:
 SUCCESS: Default scenarios enforced successfully.
 ```
 
-## DELETE `/scenario/delete`
+## POST `/scenario/delete`
 
 Authorisation required: YES, Staff only.
 

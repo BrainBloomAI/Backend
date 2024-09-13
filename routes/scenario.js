@@ -236,7 +236,7 @@ router.post('/update', authoriseStaff, async (req, res) => {
     })
 })
 
-router.delete('/delete', authoriseStaff, async (req, res) => {
+router.post('/delete', authoriseStaff, async (req, res) => {
     var staffUser;
     try {
         staffUser = await User.findByPk(req.userID, { attributes: ['userID', 'username'] });
