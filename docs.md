@@ -413,7 +413,7 @@ Accounts with staff privilieges (`role` = `'staff'`) can carry out actions like 
 
 Aside the endpoints below, staff can also delete client accounts with a POST request to `/identity/delete` ([see this](#post-identitydelete)). Staff can access game data as well; [see this.](#get-game)
 
-## POST `/staff/viewClients`
+## GET `/staff/viewClients`
 
 Authorisation required: YES, Staff only.
 
@@ -440,7 +440,7 @@ Sample success response:
 ]
 ```
 
-## POST `/staff/view/<clientID>`
+## GET `/staff/view/<clientID>`
 
 Authorisation required: YES, Staff only.
 
