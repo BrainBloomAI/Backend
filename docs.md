@@ -235,26 +235,56 @@ Endpoints at `/identity` offer comprehensive user management functionality.
 
 Authorisation required: YES
 
-No required body fields.
+Both staff and account owners can access this endpoint. Staff can choose to use this endpoint or [the other endpoint which filters by ID](#get-staffviewclientid). Account owners can only access their own data.
 
-Sample success response:
+For staff, if a `targetUsername` is provided in the query parameters, the system will target that user, if found. Otherwise, the staff's own data will be returned.
+
+Sample request query string for staff/standard user trying to see their own data (`computePerformance` and `includeLatestEvaluation` query parameters are available, but not used):
+```
+${origin}/identity
+```
+
+Sample request query string for staff trying to see a standard user's latest evaluation and aggregate performance:
+```
+${origin}/identity?targetUsername=John&computePerformance=true&includeLatestEvaluation=true
+```
+
+Sample success response for user accessing their own data with aggregate performance and latest AI evaluation:
 ```json
 {
-	"userID": "88dcab50-25c5-42b7-b455-66bc4237cee5",
+	"userID": "9cf50949-67b5-4637-86f7-388145fafcc2",
 	"username": "John",
 	"email": "user@example.com",
 	"role": "standard",
-	"points": 135,
-	"created": "2024-09-11T15:40:26.497Z",
-	"lastLogin": "2024-09-12T11:24:35.527Z",
+	"points": 117,
+	"created": "2024-09-17T11:51:42.837Z",
+	"lastLogin": "2024-09-17T11:51:42.837Z",
 	"activeGame": null,
-	"mindsListening": null,
-	"mindsEQ": null,
-	"mindsTone": null,
-	"mindsHelpfulness": null,
-	"mindsClarity": null,
-	"mindsAssessment": null,
-	"banned": false
+	"mindsListening": 40,
+	"mindsEQ": 30,
+	"mindsTone": 90,
+	"mindsHelpfulness": 80,
+	"mindsClarity": 60,
+	"mindsAssessment": "Needs more work.",
+	"banned": false,
+	"aggregatePerformance": {
+		"listening": 73,
+		"eq": 67,
+		"tone": 82,
+		"helpfulness": 56,
+		"clarity": 75
+	},
+	"latestEvaluation": {
+		"evaluationID": "1a870c8e-cd9a-4bfd-a13f-0dae2e7e6adf",
+		"listening": 70,
+		"eq": 60,
+		"tone": 80,
+		"helpfulness": 50,
+		"clarity": 70,
+		"simpleDescription": "You did a good job asking for help and thanking the customer.",
+		"fullDescription": "The user showed some understanding of the customer's needs but repeated the same phrase, which led to confusion. Encourage the user to provide more specific answers and to ask clarifying questions when needed. Practice responding to questions with clear directions and avoid repeating phrases that do not address the customer's request. This will help improve their helpfulness and clarity in future interactions.",
+		"associatedGameID": "c9feb98b-b7c4-4124-baba-ad6e9218fcaf"
+	}
 }
 ```
 
@@ -444,7 +474,12 @@ Sample success response:
 
 Authorisation required: YES, Staff only.
 
-No required body fields, but client ID must be provided in the URL. Example: `${origin}/staff/view/98c7c6c6-99e5-4a96-8914-6f75fdc4de2c`.
+No required body fields, but client ID must be provided in the URL.
+
+Sample request URL:
+```
+${origin}/staff/view/98c7c6c6-99e5-4a96-8914-6f75fdc4de2c
+```
 
 Sample success response:
 ```json

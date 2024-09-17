@@ -71,10 +71,13 @@ router.get('/', authorise, async (req, res) => {
         } else {
             user = await User.findByPk(req.userID);
         }
+        if (!user) {
+            return res.status(404).send(`ERROR: User not found.`);
+        }
 
         var data = user.toJSON();
-        const computePerformance = req.query.computePerformance === 'true';
-        const includeLatestEvaluation = req.query.includeLatestEvaluation === 'true';
+        const computePerformance = req.query.computePerformance === 'true' && user.role == "standard";
+        const includeLatestEvaluation = req.query.includeLatestEvaluation === 'true' && user.role == "standard";
 
         if (computePerformance) {
             data.aggregatePerformance = await computeAggregatePerformance(user);
@@ -117,16 +120,16 @@ router.get('/', authorise, async (req, res) => {
 
 router.get('/aggregatePerformance', authorise, async (req, res) => {
     try {
-        var user;
-        if (req.query.targetUsername) {
-            const staffUser = await User.findByPk(req.userID, { attributes: ["userID", "role"] });
-            if (staffUser.role != "staff") {
-                return res.status(403).send(`ERROR: Insufficient permissions.`);
+        var user = await User.findByPk(req.userID);
+        if (user.role == "staff") {
+            if (!req.query.targetUsername) {
+                return res.status(400).send(`ERROR: Target username not provided.`);
             }
 
             user = await User.findOne({ where: { username: req.query.targetUsername } });
-        } else {
-            user = await User.findByPk(req.userID);
+        }
+        if (!user || user.role != "standard") {
+            return res.status(404).send(`ERROR: User not found.`);
         }
 
         const performance = await computeAggregatePerformance(user);
