@@ -231,13 +231,30 @@ GET /cdn/retail.png
 
 Endpoints at `/identity` offer comprehensive user management functionality.
 
+## Aggregate Performance Computation
+
+For the [`/identity`](#get-identity) and [`/identity/aggregatePerformance`](#get-identityaggregateperformance) endpoints, the system aggregates the performance for all the numerical domains the user has been evaluated on by the AI for all games. The system computes the average of all the evaluations for each domain and returns it as the aggregate performance.
+
+In the event that the user has no games with any AI evaluations, the system will try to return the MINDS evaluation data, if it exists. If it does not, the system may either present a `null` value (for the `/identity` endpoint) or return an error response (for the `/identity/aggregatePerformance` endpoint).
+
+Sample aggregate performance computation:
+```json
+{
+	"listening": 77.5,
+	"eq": 67.5,
+	"tone": 80,
+	"helpfulness": 60,
+	"clarity": 80
+}
+```
+
 ## GET `/identity`
 
 Authorisation required: YES
 
 Both staff and account owners can access this endpoint. Staff can choose to use this endpoint or [the other endpoint which filters by ID](#get-staffviewclientid). Account owners can only access their own data.
 
-For staff, if a `targetUsername` is provided in the query parameters, the system will target that user, if found. Otherwise, the staff's own data will be returned.
+For staff, if a `targetUsername` is provided in the query parameters, the system will target that user, if found. Otherwise, the staff's own data will be returned. `computePerformance` parameter invokes the [aggregate performance computation](#aggregate-performance-computation) logic, and the resultant data will be under a `aggregatePerformance` key. `includeLatestEvaluation` parameter will include the latest AI evaluation data for the user, if available (will be `null` otherwise).
 
 Sample request query string for staff/standard user trying to see their own data (`computePerformance` and `includeLatestEvaluation` query parameters are available, but not used):
 ```
@@ -285,6 +302,30 @@ Sample success response for user accessing their own data with aggregate perform
 		"fullDescription": "The user showed some understanding of the customer's needs but repeated the same phrase, which led to confusion. Encourage the user to provide more specific answers and to ask clarifying questions when needed. Practice responding to questions with clear directions and avoid repeating phrases that do not address the customer's request. This will help improve their helpfulness and clarity in future interactions.",
 		"associatedGameID": "c9feb98b-b7c4-4124-baba-ad6e9218fcaf"
 	}
+}
+```
+
+## GET `/identity/aggregatePerformance`
+
+Authorisation required: YES
+
+Both staff and account owners can access this endpoint. Staff must provide a `targetUsername` query string parameter for this endpoint. Account owners can only access their own data.
+
+This endpoint invokes the [aggregate performance computation](#aggregate-performance-computation) logic and returns the aggregate performance data for the user.
+
+Sample request query string for staff trying to see a standard user's aggregate performance:
+```
+${origin}/identity/aggregatePerformance?targetUsername=John
+```
+
+Sample success response:
+```json
+{
+	"listening": 73,
+	"eq": 67,
+	"tone": 82,
+	"helpfulness": 56,
+	"clarity": 75
 }
 ```
 
