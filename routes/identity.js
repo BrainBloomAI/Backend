@@ -1,23 +1,142 @@
 const express = require('express');
 const yup = require('yup');
 const { v4: uuidv4 } = require('uuid');
-const { User } = require('../models');
+const { User, GameEvaluation } = require('../models');
 const { Encryption, Logger, Universal, Extensions } = require('../services');
-const { authorise } = require('../middleware/auth');
+const { authorise, authoriseStaff } = require('../middleware/auth');
+const { Model } = require('sequelize');
 
 const router = express.Router();
 
+/**
+ * 
+ * @param {Model} user 
+ */
+async function computeAggregatePerformance(user) {
+    const games = (await user.getPlayedGames({
+        include: [
+            {
+                model: GameEvaluation,
+                as: "evaluation"
+            }
+        ]
+    })).filter(g => g.evaluation != null);
+
+    // In the event that a user has no evaluations, try to return MINDS evaluation data
+    if (games.length == 0) {
+        if (user.mindsListening && user.mindsEQ && user.mindsTone && user.mindsHelpfulness && user.mindsClarity) {
+            return {
+                listening: user.mindsListening,
+                eq: user.mindsEQ,
+                tone: user.mindsTone,
+                helpfulness: user.mindsHelpfulness,
+                clarity: user.mindsClarity
+            }
+        } else {
+            return null;
+        }
+    }
+
+    var listeningTotal = 0;
+    var eqTotal = 0;
+    var toneTotal = 0;
+    var helpfulnessTotal = 0;
+    var clarityTotal = 0;
+    games.forEach(g => {
+        listeningTotal += g.evaluation.listening;
+        eqTotal += g.evaluation.eq;
+        toneTotal += g.evaluation.tone;
+        helpfulnessTotal += g.evaluation.helpfulness;
+        clarityTotal += g.evaluation.clarity;
+    })
+    return {
+        listening: Math.round((listeningTotal / games.length) * 100) / 100,
+        eq: Math.round((eqTotal / games.length) * 100) / 100,
+        tone: Math.round((toneTotal / games.length) * 100) / 100,
+        helpfulness: Math.round((helpfulnessTotal / games.length) * 100) / 100,
+        clarity: Math.round((clarityTotal / games.length) * 100) / 100
+    }
+}
+
 router.get('/', authorise, async (req, res) => {
     try {
-        const user = await User.findByPk(req.userID);
-        
+        var user;
+        if (req.query.targetUsername) {
+            const staffUser = await User.findByPk(req.userID, { attributes: ["userID", "role"] });
+            if (staffUser.role != "staff") {
+                return res.status(403).send(`ERROR: Insufficient permissions.`);
+            }
+
+            user = await User.findOne({ where: { username: req.query.targetUsername } });
+        } else {
+            user = await User.findByPk(req.userID);
+        }
+
+        var data = user.toJSON();
+        const computePerformance = req.query.computePerformance === 'true';
+        const includeLatestEvaluation = req.query.includeLatestEvaluation === 'true';
+
+        if (computePerformance) {
+            data.aggregatePerformance = await computeAggregatePerformance(user);
+        }
+        if (includeLatestEvaluation) {
+            const playedGamesWithEvaluations = (await user.getPlayedGames({
+                include: [
+                    {
+                        model: GameEvaluation,
+                        as: "evaluation"
+                    }
+                ]
+            })).filter(g => g.evaluation != null);
+
+            if (playedGamesWithEvaluations.length == 0) {
+                data.latestEvaluation = null;
+            } else {
+                const evaluations = playedGamesWithEvaluations.map(g => g.evaluation);
+                var latestEval = evaluations[0];
+                for (const eval of evaluations) {
+                    if (eval.createdAt > latestEval.createdAt) {
+                        latestEval = eval;
+                    }
+                }
+
+                data.latestEvaluation = latestEval.toJSON();
+            }
+        }
+
         return res.send(Extensions.sanitiseData(
-            user.toJSON(),
+            data,
             [],
             ["password", "authToken", "createdAt", "updatedAt"]
         ))
     } catch (err) {
-        Logger.log(`IDENTITY IDENTITY ERROR: Failed to retrieve identity; error: ${err}`);
+        Logger.log(`IDENTITY GET ERROR: Failed to process identity retrieval; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+})
+
+router.get('/aggregatePerformance', authorise, async (req, res) => {
+    try {
+        var user;
+        if (req.query.targetUsername) {
+            const staffUser = await User.findByPk(req.userID, { attributes: ["userID", "role"] });
+            if (staffUser.role != "staff") {
+                return res.status(403).send(`ERROR: Insufficient permissions.`);
+            }
+
+            user = await User.findOne({ where: { username: req.query.targetUsername } });
+        } else {
+            user = await User.findByPk(req.userID);
+        }
+
+        const performance = await computeAggregatePerformance(user);
+        if (!performance) {
+            return res.status(404).send(`ERROR: Not enough data to compute aggregate performance.`);
+        }
+
+        return res.send(performance);
+    } catch (err) {
+        Logger.log(`IDENTITY AGGREGATEPERFORMANCE ERROR: Failed to compute aggregate performance for identity; error: ${err}`);
         return res.status(500).send(`ERROR: Failed to process request.`);
     }
 })
@@ -273,7 +392,7 @@ router.post('/delete', authorise, async (req, res) => {
             if (!targetUser) {
                 return res.status(404).send(`UERROR: User not found.`);
             }
-            
+
             await targetUser.destroy();
 
             Logger.log(`IDENTITY DELETE: Staff with username '${requestingUser.username}' deleted account with username '${targetUser.username}'.`);

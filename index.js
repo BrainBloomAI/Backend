@@ -95,11 +95,11 @@ async function onDBSynchronise() {
     }
 
     if (process.env.DEBUG_MODE === "True") {
-        await Game.destroy({ where: {} })
-        await GameEvaluation.destroy({ where: {} })
-        await GameDialogue.destroy({ where: {} })
-        await DialogueAttempt.destroy({ where: {} })
-        await User.update({ activeGame: null }, { where: {} })
+        // await Game.destroy({ where: {} })
+        // await GameEvaluation.destroy({ where: {} })
+        // await GameDialogue.destroy({ where: {} })
+        // await DialogueAttempt.destroy({ where: {} })
+        // await User.update({ activeGame: null }, { where: {} })
     }
 }
 
