@@ -16,6 +16,7 @@ Table of Contents:
 - [Identity Management](#identity-management)
 - [Staff Management](#staff-management)
 - [Game Management](#game-management)
+- [Data Export](#data-export)
 
 # System Configuration
 
@@ -1266,6 +1267,34 @@ Sample success response:
 	"pointsEarned": 15,
 	"feedback": "The user had difficulty understanding and responding to the customer’s needs."
 }
+```
+
+# Data Export
+
+## GET `/export`
+
+Authorisation required: YES, Staff only.
+
+This section is about this singular endpoint which allows staff to export data from the system. This endpoint is very powerful and synthesises, processes, formats and sorts data for staff to use for their own analysis.
+
+Responses will be in the form of downloadable attachments. All games, dialogues and attempts will be automatically sorted in ascending order of creation/other logical order. All file exports will only have the data necessary as per comfiguration parameters provided. Text files will be auto-generated, and will contain a more human-readable representation of all the data.
+
+The data export format and parameters are all highly configurable, so read below for the number of different options available:
+
+- `authToken` (Required) - The authentication token of the logged in staff account.
+- `exportFormat` - Set to `csv`, `txt`, `json`. Default is `json`.
+- `includeScenarios` - Set to `true` to include all scenarios in the system.
+- `includeGames` - Set to `true` to include all games for all users.
+- `includeEvaluations` - Set to `true` to include all game AI evaluations for all users. Requires `includeGames` to be set to `true`.
+- `includeDialogues` - Set to `true` to include all dialogues for all games. Requires `includeGames` to be set to `true`.
+- `computePerformance` - Set to `true` to compute the aggregate performance across all AI evaluations of games for a user.
+- `targetUsername` - If set, only data for that specific user will be included in the export.
+
+Note that sample response will not be provided for this endpoint. Please try it out yourself.
+
+Sample request query string:
+```
+${origin}/export?authToken=jogrz9mnob&includeGames=true&includeEvaluations=true&includeDialogues=true&includeScenarios=true&computePerformance=true&targetUsername=John
 ```
 
 © 2024 BrainBloomAI Team. All rights reserved.
