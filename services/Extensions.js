@@ -239,8 +239,6 @@ class Extensions {
         }
 
         // Add in user data first, and establish all headers
-        console.log("------ ROOT USER OBJECT")
-        console.log(rootUserObject)
         rows.push(rootUserObject);
 
         // Loop through played games

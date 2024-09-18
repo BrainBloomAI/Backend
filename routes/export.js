@@ -29,8 +29,6 @@ router.get("/export", async (req, res) => {
         includeGames,
         includeDialogues,
         includeEvaluations,
-        // includeSimpleConversationLog,
-        // includeFullConversationLog,
         computePerformance,
         exportFormat
     } = req.query;
@@ -40,10 +38,6 @@ router.get("/export", async (req, res) => {
     includeGames = includeGames === "true";
     includeDialogues = includeDialogues === "true" && includeGames;
     includeEvaluations = includeEvaluations === "true" && includeGames;
-
-    // includeSimpleConversationLog = includeSimpleConversationLog === "true" && includeGames;
-    // includeFullConversationLog = includeFullConversationLog === "true" && includeGames;
-    // const conversationLogFormat = includeGames ? (includeSimpleConversationLog ? "simple" : "full") : null;
 
     computePerformance = computePerformance === "true";
 
@@ -113,9 +107,11 @@ router.get("/export", async (req, res) => {
             user.banned = user.banned ? "Yes" : "No";
             user.playedGames.forEach(game => {
                 game.scenarioName = game.scenario.name;
+
                 game.dialogues.sort((a, b) => {
                     return new Date(a.createdTimestamp) - new Date(b.createdTimestamp)
                 });
+
                 game.dialogues.forEach(dialogue => {
                     dialogue.successful = dialogue.successful ? "Yes" : "No";
                     dialogue.attempts.sort((a, b) => {
@@ -126,10 +122,6 @@ router.get("/export", async (req, res) => {
                         attempt.successful = attempt.successful ? "Yes" : "No";
                     });
                 })
-
-                // if (conversationLogFormat) {
-                //     game.conversationLog = Extensions.prepGameDialogueForAI(game, false, conversationLogFormat === "full");
-                // }
             })
 
             if (computePerformance) {
@@ -144,11 +136,10 @@ router.get("/export", async (req, res) => {
     }
 
     // Format source data according to request parameters
-    var disallowedKeys = ["createdAt", "updatedAt"];
+    var disallowedKeys = ["createdAt", "updatedAt", "password", "authToken"];
     if (!includeScenarios) {
         disallowedKeys.push("scenario")
     }
-
     if (!includeGames) {
         disallowedKeys.push("playedGames")
     }
@@ -162,11 +153,11 @@ router.get("/export", async (req, res) => {
 
     var formattedJSON = fullSourceJSON.map(user => Extensions.sanitiseData(user, [], disallowedKeys));
 
-    console.log(formattedJSON);
-
     if (exportFormat === "json") {
         res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', 'attachment; filename=\"' + 'download-' + Date.now() + '.json\"');
+        res.setHeader('Content-Disposition', `attachment; filename="BrainBloomAIExport.json"`);
+
+        Logger.log(`EXPORT: '${user.username}' exported data in JSON format.`)
         return res.send(formattedJSON);
     } else if (exportFormat === "csv") {
         // Synthesise source data
@@ -196,8 +187,9 @@ router.get("/export", async (req, res) => {
         }
 
         res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', 'attachment; filename=\"' + 'download-' + Date.now() + '.csv\"');
+        res.setHeader('Content-Disposition', `attachment; filename="BrainBloomAIExport.csv"`);
 
+        Logger.log(`EXPORT: '${user.username}' exported data in CSV format.`)
         return stringify(sourceData, { header: true }).pipe(res);
     }
 })
