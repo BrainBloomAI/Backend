@@ -198,7 +198,7 @@ router.get('/validateSession', authorise, async (req, res) => {
     try {
         const user = await User.findByPk(req.userID);
 
-        if (Extensions.timeDiffInSeconds(new Date(user.lastLogin), new Date()) > 10200) {
+        if (Extensions.timeDiffInSeconds(new Date(user.lastLogin), new Date()) > 604200) {
             return res.status(200).send("SUCCESS: Session validated. Refresh recommended.")
         }
 

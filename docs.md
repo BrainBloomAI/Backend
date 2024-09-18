@@ -196,7 +196,7 @@ Note that responses may not always have the full schema of the object. Based on 
 
 Users can prove their identity to the server by using an authentication token. This token is unique system-wide and is provided upon a successful login.
 
-Auth tokens are valid for 3 hours. Tokens should be refreshed 10 minutes before expiry to prevent session termination.
+Auth tokens are valid for 7 days. Tokens should be refreshed 10 minutes before expiry to prevent session termination.
 
 Steps to authenticate:
 - POST to `/identity/login` with credentials to obtain authentication token.
