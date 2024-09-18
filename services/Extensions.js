@@ -114,8 +114,10 @@ class Extensions {
      * 
      * @param {Model} user
      */
-    static async computeAggregatePerformance(user) {
-        const games = (await user.getPlayedGames({
+    static async computeAggregatePerformance(user, gamesAlreadyFetched = false) {
+        const games = gamesAlreadyFetched ? (
+            user.playedGames.filter(g => g.evaluation != null)
+        ) : (await user.getPlayedGames({
             include: [
                 {
                     model: GameEvaluation,
@@ -170,11 +172,11 @@ class Extensions {
         }]
     }
 
-    static flattenUserDataForCSV(user) {
+    static flattenUserDataForCSV(user, { includeScenarios, includeGames, includeDialogues, includeEvaluations, computePerformance }) {
         var rows = []
 
-        // Add in user data first, and establish all headers
-        rows.push({
+        // Curate the root user object, along with all headers needed
+        var rootUserObject = {
             Username: user.username,
             UserEmail: user.email,
             UserRole: user.role,
@@ -187,90 +189,118 @@ class Extensions {
             UserMindsHelpfulness: user.mindsHelpfulness,
             UserMindsClarity: user.mindsClarity,
             UserMindsAssessment: user.mindsAssessment,
-            UserBanned: user.banned,
-            ScenarioID: null,
-            ScenarioName: null,
-            ScenarioDescription: null,
-            ScenarioModelRole: null,
-            ScenarioUserRole: null,
-            GameID: null,
-            GameScenario: null,
-            GameStartedTimestamp: null,
-            GameStatus: null,
-            GamePointsEarned: null,
-            DialogueID: null,
-            DialogueBy: null,
-            DialogueAttempts: null,
-            DialogueSuccess: null,
-            DialogueCreatedTimestamp: null,
-            AttemptID: null,
-            AttemptNumber: null,
-            AttemptContent: null,
-            AttemptSuccess: null,
-            AttemptTimestamp: null,
-            AttemptTimeTaken: null,
-            EvaluationID: null,
-            EvaluationListening: null,
-            EvaluationEQ: null,
-            EvaluationTone: null,
-            EvaluationHelpfulness: null,
-            EvaluationClarity: null,
-            EvaluationSimpleDescription: null,
-            EvaluationFullDescription: null
-        })
+            UserBanned: user.banned
+        }
+
+        if (computePerformance) {
+            rootUserObject.AggregateListening = user.aggregatePerformance?.listening || null;
+            rootUserObject.AggregateEQ = user.aggregatePerformance?.eq || null;
+            rootUserObject.AggregateTone = user.aggregatePerformance?.tone || null;
+            rootUserObject.AggregateHelpfulness = user.aggregatePerformance?.helpfulness || null;
+            rootUserObject.AggregateClarity = user.aggregatePerformance?.clarity || null;
+        }
+        if (includeScenarios) {
+            rootUserObject.ScenarioID = null;
+            rootUserObject.ScenarioName = null;
+            rootUserObject.ScenarioDescription = null;
+            rootUserObject.ScenarioModelRole = null;
+            rootUserObject.ScenarioUserRole = null;
+        }
+        if (includeGames) {
+            rootUserObject.GameID = null;
+            rootUserObject.GameScenario = null;
+            rootUserObject.GameStartedTimestamp = null;
+            rootUserObject.GameStatus = null;
+            rootUserObject.GamePointsEarned = null;
+        }
+        if (includeDialogues) {
+            rootUserObject.DialogueID = null;
+            rootUserObject.DialogueBy = null;
+            rootUserObject.DialogueAttempts = null;
+            rootUserObject.DialogueSuccess = null;
+            rootUserObject.DialogueCreatedTimestamp = null;
+
+            rootUserObject.AttemptID = null;
+            rootUserObject.AttemptNumber = null;
+            rootUserObject.AttemptContent = null;
+            rootUserObject.AttemptSuccess = null;
+            rootUserObject.AttemptTimestamp = null;
+            rootUserObject.AttemptTimeTaken = null;
+        }
+        if (includeEvaluations) {
+            rootUserObject.EvaluationID = null;
+            rootUserObject.EvaluationListening = null;
+            rootUserObject.EvaluationEQ = null;
+            rootUserObject.EvaluationTone = null;
+            rootUserObject.EvaluationHelpfulness = null;
+            rootUserObject.EvaluationClarity = null;
+            rootUserObject.EvaluationSimpleDescription = null;
+            rootUserObject.EvaluationFullDescription = null;
+        }
+
+        // Add in user data first, and establish all headers
+        console.log("------ ROOT USER OBJECT")
+        console.log(rootUserObject)
+        rows.push(rootUserObject);
 
         // Loop through played games
-        user.playedGames.forEach(game => {
-            // Add in high-level game information
-            var gameRowObject = {
-                Username: user.username,
-                GameID: game.gameID,
-                GameScenario: game.scenario.name,
-                GameStartedTimestamp: game.startedTimestamp,
-                GameStatus: game.status,
-                GamePointsEarned: game.pointsEarned
-            }
-            if (game.evaluation) {
-                gameRowObject.EvaluationID = game.evaluation.evaluationID
-                gameRowObject.EvaluationListening = game.evaluation.listening
-                gameRowObject.EvaluationEQ = game.evaluation.eq
-                gameRowObject.EvaluationTone = game.evaluation.tone
-                gameRowObject.EvaluationHelpfulness = game.evaluation.helpfulness
-                gameRowObject.EvaluationClarity = game.evaluation.clarity
-                gameRowObject.EvaluationSimpleDescription = game.evaluation.simpleDescription
-                gameRowObject.EvaluationFullDescription = game.evaluation.fullDescription
-            }
-
-            rows.push(gameRowObject)
-
-            game.dialogues.forEach(dialogue => {
-                // Add in high-level dialogue information
-                rows.push({
+        if (includeGames && user.playedGames) {
+            user.playedGames.forEach(game => {
+                // Add in high-level game information
+                var gameRowObject = {
                     Username: user.username,
                     GameID: game.gameID,
-                    DialogueID: dialogue.dialogueID,
-                    DialogueBy: dialogue.by,
-                    DialogueAttempts: dialogue.attemptsCount,
-                    DialogueSuccess: dialogue.successful,
-                    DialogueCreatedTimestamp: dialogue.createdTimestamp,
-                })
+                    GameScenario: game.scenarioName,
+                    GameStartedTimestamp: game.startedTimestamp,
+                    GameStatus: game.status,
+                    GamePointsEarned: game.pointsEarned
+                }
+                if (includeEvaluations && game.evaluation) {
+                    gameRowObject.EvaluationID = game.evaluation.evaluationID
+                    gameRowObject.EvaluationListening = game.evaluation.listening
+                    gameRowObject.EvaluationEQ = game.evaluation.eq
+                    gameRowObject.EvaluationTone = game.evaluation.tone
+                    gameRowObject.EvaluationHelpfulness = game.evaluation.helpfulness
+                    gameRowObject.EvaluationClarity = game.evaluation.clarity
+                    gameRowObject.EvaluationSimpleDescription = game.evaluation.simpleDescription
+                    gameRowObject.EvaluationFullDescription = game.evaluation.fullDescription
+                }
 
-                dialogue.attempts.forEach(attempt => {
-                    // Add in high-level attempt information
-                    rows.push({
-                        Username: user.username,
-                        GameID: game.gameID,
-                        DialogueID: dialogue.dialogueID,
-                        AttemptID: attempt.attemptID,
-                        AttemptNumber: attempt.attemptNumber,
-                        AttemptContent: attempt.content,
-                        AttemptSuccess: attempt.successful,
-                        AttemptTimestamp: attempt.timestamp,
-                        AttemptTimeTaken: attempt.timeTaken,
+                rows.push(gameRowObject)
+
+                if (includeDialogues && game.dialogues) {
+                    game.dialogues.forEach(dialogue => {
+                        // Add in high-level dialogue information
+                        rows.push({
+                            Username: user.username,
+                            GameID: game.gameID,
+                            DialogueID: dialogue.dialogueID,
+                            DialogueBy: dialogue.by,
+                            DialogueAttempts: dialogue.attemptsCount,
+                            DialogueSuccess: dialogue.successful,
+                            DialogueCreatedTimestamp: dialogue.createdTimestamp,
+                        })
+
+                        if (dialogue.attempts) {
+                            dialogue.attempts.forEach(attempt => {
+                                // Add in attempt information
+                                rows.push({
+                                    Username: user.username,
+                                    GameID: game.gameID,
+                                    DialogueID: dialogue.dialogueID,
+                                    AttemptID: attempt.attemptID,
+                                    AttemptNumber: attempt.attemptNumber,
+                                    AttemptContent: attempt.content,
+                                    AttemptSuccess: attempt.successful,
+                                    AttemptTimestamp: attempt.timestamp,
+                                    AttemptTimeTaken: attempt.timeTaken,
+                                })
+                            })
+                        }
                     })
-                })
+                }
             })
-        })
+        }
 
         return rows;
     }

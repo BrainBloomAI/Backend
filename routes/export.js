@@ -1,7 +1,8 @@
 const express = require('express');
 const { User, Game, GameEvaluation, GameDialogue, DialogueAttempt, Scenario } = require('../models');
 const { Logger, Extensions } = require('../services');
-const util = require('util')
+const util = require('util');
+const { stringify } = require('csv-stringify');
 const router = express.Router();
 
 router.get("/export", async (req, res) => {
@@ -28,8 +29,8 @@ router.get("/export", async (req, res) => {
         includeGames,
         includeDialogues,
         includeEvaluations,
-        includeSimpleConversationLog,
-        includeFullConversationLog,
+        // includeSimpleConversationLog,
+        // includeFullConversationLog,
         computePerformance,
         exportFormat
     } = req.query;
@@ -40,9 +41,9 @@ router.get("/export", async (req, res) => {
     includeDialogues = includeDialogues === "true" && includeGames;
     includeEvaluations = includeEvaluations === "true" && includeGames;
 
-    includeSimpleConversationLog = includeSimpleConversationLog === "true" && includeGames;
-    includeFullConversationLog = includeFullConversationLog === "true" && includeGames;
-    const conversationLogFormat = includeGames ? (includeSimpleConversationLog ? "simple" : "full") : null;
+    // includeSimpleConversationLog = includeSimpleConversationLog === "true" && includeGames;
+    // includeFullConversationLog = includeFullConversationLog === "true" && includeGames;
+    // const conversationLogFormat = includeGames ? (includeSimpleConversationLog ? "simple" : "full") : null;
 
     computePerformance = computePerformance === "true";
 
@@ -81,33 +82,124 @@ router.get("/export", async (req, res) => {
     ]
 
     var fullSourceJSON = [];
-    if (targetUsername) {
-        const targetUser = await User.findOne({
-            where: {
-                username: targetUsername
-            },
-            include: fullIncludeObject
-        });
-        if (!targetUser) {
-            return res.status(404).send('ERROR: Target user not found.')
-        }
+    try {
+        if (targetUsername) {
+            const targetUser = await User.findOne({
+                where: {
+                    username: targetUsername
+                },
+                include: fullIncludeObject
+            });
+            if (!targetUser) {
+                return res.status(404).send('ERROR: Target user not found.')
+            }
 
-        fullSourceJSON.push(targetUser.toJSON());
-    } else {
-        const users = await User.findAll({
-            include: fullIncludeObject
-        })
-        
-        fullSourceJSON = users.map(u => u.toJSON());
+            fullSourceJSON.push(targetUser.toJSON());
+        } else {
+            const users = await User.findAll({
+                include: fullIncludeObject
+            })
+
+            fullSourceJSON = users.map(u => u.toJSON());
+        }
+    } catch (err) {
+        Logger.log(`EXPORT ERROR: Failed to retrieve user data for export; error: ${err}`);
+        return res.status(500).send('ERROR: Failed to process request.')
     }
 
-    // Synthesise source data
-    var sourceData = [];
-    fullSourceJSON.forEach(user => {
-        sourceData.concat(Extensions.flattenUserDataForCSV(user))
-    })
+    // Do additional parameter-based data processing
+    try {
+        fullSourceJSON = await Promise.all(fullSourceJSON.map(async user => {
+            user.banned = user.banned ? "Yes" : "No";
+            user.playedGames.forEach(game => {
+                game.scenarioName = game.scenario.name;
+                game.dialogues.sort((a, b) => {
+                    return new Date(a.createdTimestamp) - new Date(b.createdTimestamp)
+                });
+                game.dialogues.forEach(dialogue => {
+                    dialogue.successful = dialogue.successful ? "Yes" : "No";
+                    dialogue.attempts.sort((a, b) => {
+                        return new Date(a.timestamp) - new Date(b.timestamp)
+                    });
 
-    res.send('temp')
+                    dialogue.attempts.forEach(attempt => {
+                        attempt.successful = attempt.successful ? "Yes" : "No";
+                    });
+                })
+
+                // if (conversationLogFormat) {
+                //     game.conversationLog = Extensions.prepGameDialogueForAI(game, false, conversationLogFormat === "full");
+                // }
+            })
+
+            if (computePerformance) {
+                user.aggregatePerformance = await Extensions.computeAggregatePerformance(user, true);
+            }
+
+            return user;
+        }));
+    } catch (err) {
+        Logger.log(`EXPORT ERROR: Failed to process user data for export; error: ${err}`);
+        return res.status(500).send('ERROR: Failed to process request.')
+    }
+
+    // Format source data according to request parameters
+    var disallowedKeys = ["createdAt", "updatedAt"];
+    if (!includeScenarios) {
+        disallowedKeys.push("scenario")
+    }
+
+    if (!includeGames) {
+        disallowedKeys.push("playedGames")
+    }
+    if (!includeDialogues) {
+        disallowedKeys.push("dialogues")
+        disallowedKeys.push("attempts")
+    }
+    if (!includeEvaluations) {
+        disallowedKeys.push("evaluation")
+    }
+
+    var formattedJSON = fullSourceJSON.map(user => Extensions.sanitiseData(user, [], disallowedKeys));
+
+    console.log(formattedJSON);
+
+    if (exportFormat === "json") {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', 'attachment; filename=\"' + 'download-' + Date.now() + '.json\"');
+        return res.send(formattedJSON);
+    } else if (exportFormat === "csv") {
+        // Synthesise source data
+        var sourceData = [];
+
+        // Add in user, games, dialogues, attempts, evaluations
+        formattedJSON.forEach(user => {
+            sourceData = sourceData.concat(
+                Extensions.flattenUserDataForCSV(
+                    user,
+                    { includeScenarios, includeGames, includeDialogues, includeEvaluations, computePerformance }
+                )
+            );
+        })
+
+        // Add in scenarios
+        if (includeScenarios) {
+            try {
+                const scenarios = await Scenario.findAll();
+                scenarios.forEach(scenario => {
+                    sourceData = sourceData.concat(Extensions.flattenScenarioDataForCSV(scenario.toJSON()));
+                })
+            } catch (err) {
+                Logger.log(`EXPORT ERROR: Failed to retrieve scenarios for export; error: ${err}`);
+                return res.status(500).send('ERROR: Failed to process request.')
+            }
+        }
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename=\"' + 'download-' + Date.now() + '.csv\"');
+
+        return stringify(sourceData, { header: true }).pipe(res);
+    }
 })
 
 module.exports = { router, at: "/" }
