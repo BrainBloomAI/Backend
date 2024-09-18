@@ -136,61 +136,71 @@ router.get("/export", async (req, res) => {
     }
 
     // Format source data according to request parameters
-    var disallowedKeys = ["createdAt", "updatedAt", "password", "authToken"];
-    if (!includeScenarios) {
-        disallowedKeys.push("scenario")
-    }
-    if (!includeGames) {
-        disallowedKeys.push("playedGames")
-    }
-    if (!includeDialogues) {
-        disallowedKeys.push("dialogues")
-        disallowedKeys.push("attempts")
-    }
-    if (!includeEvaluations) {
-        disallowedKeys.push("evaluation")
-    }
-
-    var formattedJSON = fullSourceJSON.map(user => Extensions.sanitiseData(user, [], disallowedKeys));
-
-    if (exportFormat === "json") {
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', `attachment; filename="BrainBloomAIExport.json"`);
-
-        Logger.log(`EXPORT: '${user.username}' exported data in JSON format.`)
-        return res.send(formattedJSON);
-    } else if (exportFormat === "csv") {
-        // Synthesise source data
-        var sourceData = [];
-
-        // Add in user, games, dialogues, attempts, evaluations
-        formattedJSON.forEach(user => {
-            sourceData = sourceData.concat(
-                Extensions.flattenUserDataForCSV(
-                    user,
-                    { includeScenarios, includeGames, includeDialogues, includeEvaluations, computePerformance }
-                )
-            );
-        })
-
-        // Add in scenarios
-        if (includeScenarios) {
-            try {
-                const scenarios = await Scenario.findAll();
-                scenarios.forEach(scenario => {
-                    sourceData = sourceData.concat(Extensions.flattenScenarioDataForCSV(scenario.toJSON()));
-                })
-            } catch (err) {
-                Logger.log(`EXPORT ERROR: Failed to retrieve scenarios for export; error: ${err}`);
-                return res.status(500).send('ERROR: Failed to process request.')
-            }
+    var formattedJSON = [];
+    try {
+        var disallowedKeys = ["createdAt", "updatedAt", "password", "authToken"];
+        if (!includeScenarios) {
+            disallowedKeys.push("scenario")
+        }
+        if (!includeGames) {
+            disallowedKeys.push("playedGames")
+        }
+        if (!includeDialogues) {
+            disallowedKeys.push("dialogues")
+            disallowedKeys.push("attempts")
+        }
+        if (!includeEvaluations) {
+            disallowedKeys.push("evaluation")
         }
 
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', `attachment; filename="BrainBloomAIExport.csv"`);
+        formattedJSON = fullSourceJSON.map(user => Extensions.sanitiseData(user, [], disallowedKeys));
+    } catch (err) {
+        Logger.log(`EXPORT ERROR: Failed to format user data for export; error: ${err}`);
+        return res.status(500).send('ERROR: Failed to process request.')
+    }
 
-        Logger.log(`EXPORT: '${user.username}' exported data in CSV format.`)
-        return stringify(sourceData, { header: true }).pipe(res);
+    try {
+        if (exportFormat === "json") {
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Content-Disposition', `attachment; filename="BrainBloomAIExport.json"`);
+
+            Logger.log(`EXPORT: '${user.username}' exported data in JSON format.`)
+            return res.send(formattedJSON);
+        } else if (exportFormat === "csv") {
+            // Synthesise source data
+            var sourceData = [];
+
+            // Add in user, games, dialogues, attempts, evaluations
+            formattedJSON.forEach(user => {
+                sourceData = sourceData.concat(
+                    Extensions.flattenUserDataForCSV(
+                        user,
+                        { includeScenarios, includeGames, includeDialogues, includeEvaluations, computePerformance }
+                    )
+                );
+            })
+
+            // Add in scenarios
+            if (includeScenarios) {
+                try {
+                    const scenarios = await Scenario.findAll();
+                    scenarios.forEach(scenario => {
+                        sourceData = sourceData.concat(Extensions.flattenScenarioDataForCSV(scenario.toJSON()));
+                    })
+                } catch (err) {
+                    Logger.log(`EXPORT ERROR: Failed to retrieve scenarios for export; error: ${err}`);
+                    return res.status(500).send('ERROR: Failed to process request.')
+                }
+            }
+
+            res.setHeader('Content-Type', 'text/csv');
+            res.setHeader('Content-Disposition', `attachment; filename="BrainBloomAIExport.csv"`);
+
+            Logger.log(`EXPORT: '${user.username}' exported data in CSV format.`)
+            return stringify(sourceData, { header: true }).pipe(res);
+        }
+    } catch (err) {
+        Logger.log(`EXPORT ERROR: Failed to export data and send response; error: ${err}`);
     }
 })
 
