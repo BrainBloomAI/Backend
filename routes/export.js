@@ -203,7 +203,7 @@ router.get("/export", async (req, res) => {
 
             Logger.log(`EXPORT: '${user.username}' exported data in CSV format.`)
             return stringify(sourceData, { header: true }).pipe(res);
-        } else {
+        } else if (exportFormat === "txt") {
             var textContent = `BrainBloomAI Textual Export
 Upon request by staff '${user.username}' on ${new Date().toString()}.
 
@@ -353,6 +353,8 @@ Timestamp: ${new Date(attempt.timestamp).toString()}
 
             Logger.log(`EXPORT: '${user.username}' exported data in text format.`)
             return res.send(textContent);
+        } else {
+            return res.status(400).send('ERROR: Invalid export format specified.')
         }
     } catch (err) {
         Logger.log(`EXPORT ERROR: Failed to export data and send response; error: ${err}`);
