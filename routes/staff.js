@@ -26,6 +26,28 @@ router.get('/viewClients', authoriseStaff, async (req, res) => {
     }
 })
 
+router.get('/view/:clientID', authoriseStaff, async (req, res) => {
+    try {
+        const targetClient = await User.findByPk(req.params.clientID, {
+            where: {
+                role: 'standard'
+            }
+        });
+        if (!targetClient) {
+            return res.status(404).send(`ERROR: Target client not found.`);
+        }
+
+        return res.send(Extensions.sanitiseData(
+            targetClient.toJSON(),
+            [],
+            ['password', 'authToken', 'role', 'createdAt', 'updatedAt']
+        ))
+    } catch (err) {
+        Logger.log(`STAFF VIEWCLIENT ERROR: Failed to retrieve target client; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+})
+
 router.post('/banClient', authoriseStaff, async (req, res) => {
     var staffUser;
     try {

@@ -11,6 +11,8 @@ Table of Contents:
 - [System Configuration](#system-configuration)
 - [Database Schemas](#database-schemas)
 - [Authentication Flow](#authentication-flow)
+- [Gamification](#gamification)
+- [Miscellaneous](#miscellaneous)
 - [Identity Management](#identity-management)
 - [Staff Management](#staff-management)
 - [Game Management](#game-management)
@@ -21,6 +23,30 @@ Setup requirements for server:
 - `config/config.json` - File which can store multiple configurations for the server to use. System behaviour can be manipulated by changing values in this file. For standard operation, simply duplicate the `config/boilerplateConfig.json` file and rename it to `config/config.json`. You may need to change database connection information however. See [database configuration section](#database-configuration).
 - `.env` - Stores environment variables for the server to use. These include dials to control the operation of certain parts of the system as well as sensitive information such as API keys. A `.env.example` has been provided for you to quickly fill in values for variables.
 - `Node.js and NPM` - Ensure you have Node.js on your system. Run `npm install` to install all dependencies.
+
+## Cloud File Storage
+
+The powerful `FileManager` sub-system is a complex file I/O, maintenance and consistency service that allows for easy file management and storage. The service creates, manages and uses a directory called `FileStore` for all of it's operations.
+
+It is mainly used to store and retrieve background images for scenarios at the time of writing.
+
+The service can work with Firebase Cloud Storage to make for a even more robust file management for the system. By default, the service will try to connect to Firebase Cloud Storage. There are, however, contingency fallbacks in place where the service pivots to local file storage.
+
+Thus, there are two modes of operation for the system:
+- Cloud mode (Default)
+    - Connects to Firebase Cloud Storage bucket. Cloud is the ultimate source of truth, and smart on-demand principles will ensure cache efficiency and consistency of local `FileStore` directory.
+	- Will automatically fall back to local mode in the event of misconfiguration or connection issues
+	- `serviceAccountKey.json` file in root directory required.
+	- `FIRESTORAGE_ENABLED` in `.env` set to `True`.
+	- `STORAGE_URL` in `.env` set to Firebase Cloud Storage Bucket URL.
+	- `FILEMANAGER_ENABLED` in `.env` set to `True`.
+- Local mode
+	- Standard local file storage and management is used. No external dependencies.
+	- Will be backup option if cloud mode fails.
+	- `FILEMANAGER_ENABLED` in `.env` set to `True`.
+	- Can be configured to be the primary mode of operation by setting `FILEMANAGER_MODE` to `local` in the `.env` file. Default is `cloud`.
+
+The `serviceAccountKey.json` file is a Firebase service account private key. Obtain it by logging onto the Firebase console, navigating to Project Settings > Service Accounts > Generate New Private Key. Rename the file to `serviceAccountKey.json` and place it in the root directory.
 
 ## Database Configuration
 
@@ -107,10 +133,17 @@ Note that responses may not always have the full schema of the object. Based on 
 - `email` - Unique email.
 - `password` - Hashed password.
 - `role` - Role of the user. Can be either `standard` or `staff`. Staff can perform additional actions.
+- `points` - Points earned by the user. Default is `0`.
 - `created` - ISO datetime string of account creation date.
 - `lastLogin` - ISO datetime string of last login date. Used to compute sesison expiry. Nullable.
 - `authToken` - Authentication token for the user. Used to authenticate requests. Nullable.
 - `activeGame` - ID of the game the user is currently playing. Nullable.
+- `mindsListening` - MINDS evaluation metric for listening. Nullable.
+- `mindsEQ` - MINDS evaluation metric for emotional intelligence. Nullable d.
+- `mindsTone` - MINDS evaluation metric for tone. Nullable d.
+- `mindsHelpfulness` - MINDS evaluation metric for helpfulness. Nullable d.
+- `mindsClarity` - MINDS evaluation metric for clarity. Nullable d.
+- `mindsAssessment` - MINDS evaluation assessment. Nullable.
 - `banned` - Boolean value to indicate if the user is banned. Default is `false`.
 
 `Scenario`:
@@ -126,8 +159,9 @@ Note that responses may not always have the full schema of the object. Based on 
 - `gameID` - Primary key.
 - `scenarioID` - Foreign key to `Scenario`.
 - `userID` - Foreign key to `User`.
-- `startedTimestamp` - ISO datetime string of game start time.
 - `status` - Status of the game. Can be either `'ongoing'`, `'abandoned'`, or `'complete'`.
+- `startedTimestamp` - ISO datetime string of game start time.
+- `pointsEarned` - Integer value of points earned in the game. Nullable.
 
 `GameDialogue`:
 - `dialogueID` - Primary key.
@@ -146,6 +180,17 @@ Note that responses may not always have the full schema of the object. Based on 
 - `timestamp` - ISO datetime string of attempt creation time.
 - `timeTaken` - Time taken in seconds as a double value to utter this attempt.
 
+`GameEvaluation`:
+- `evaluationID` - Primary key.
+- `associatedGameID` - Foreign key to `Game`. Optional relationship from `Game` to `GameEvaluation`.
+- `listening` - AI-estimated evaluation metric for listening. Nullable.
+- `eq` - AI-estimated evaluation metric for emotional intelligence. Nullable.
+- `tone` - AI-estimated evaluation metric for tone. Nullable.
+- `helpfulness` - AI-estimated evaluation metric for helpfulness. Nullable.
+- `clarity` - AI-estimated evaluation metric for clarity. Nullable.
+- `simpleDescription` - Simple description of the evaluation. Should be shown to the user. Nullable.
+- `fullDescription` - Full description of the evaluation. Should be shown to staff. Nullable.
+
 # Authentication Flow
 
 Users can prove their identity to the server by using an authentication token. This token is unique system-wide and is provided upon a successful login.
@@ -156,9 +201,133 @@ Steps to authenticate:
 - POST to `/identity/login` with credentials to obtain authentication token.
 - Use token as value of the header `authtoken` in all requests to the server which require authorisation.
 
+# Gamification
+
+Users of BrainBloomAI are encouraged to play more games and keep their training up through a points-based incentive program.
+
+After completing games, based on how well they did in the game, points will be awarded to the user's profile. These points can be redeemed for badges or other rewards (not implemented yet).
+
+Points are awarded based on the following criteria:
+- Game completion: 10 points
+- Zero failed attempts in an entire game: 5 points
+- Passing evaluation metrics (> 80): 3 points/metric (15 points maximum)
+
+This means that the user can earn a maximum of 30 points per completed game. Total points are stored in the `points` field of the `User` model.
+
+# Miscellaneous
+
+## GET `/cdn/:file`
+
+Authorisation required: NONE
+
+If a file with the provided filename exists in the system, it will be returned.
+
+Sample request:
+```
+GET /cdn/retail.png
+```
+
 # Identity Management
 
 Endpoints at `/identity` offer comprehensive user management functionality.
+
+## Aggregate Performance Computation
+
+For the [`/identity`](#get-identity) and [`/identity/aggregatePerformance`](#get-identityaggregateperformance) endpoints, the system aggregates the performance for all the numerical domains the user has been evaluated on by the AI for all games. The system computes the average of all the evaluations for each domain and returns it as the aggregate performance.
+
+In the event that the user has no games with any AI evaluations, the system will try to return the MINDS evaluation data, if it exists. If it does not, the system may either present a `null` value (for the `/identity` endpoint) or return an error response (for the `/identity/aggregatePerformance` endpoint).
+
+Sample aggregate performance computation:
+```json
+{
+	"listening": 77.5,
+	"eq": 67.5,
+	"tone": 80,
+	"helpfulness": 60,
+	"clarity": 80
+}
+```
+
+## GET `/identity`
+
+Authorisation required: YES
+
+Both staff and account owners can access this endpoint. Staff can choose to use this endpoint or [the other endpoint which filters by ID](#get-staffviewclientid). Account owners can only access their own data.
+
+For staff, if a `targetUsername` is provided in the query parameters, the system will target that user, if found. Otherwise, the staff's own data will be returned. `computePerformance` parameter invokes the [aggregate performance computation](#aggregate-performance-computation) logic, and the resultant data will be under a `aggregatePerformance` key. `includeLatestEvaluation` parameter will include the latest AI evaluation data for the user, if available (will be `null` otherwise).
+
+Sample request query string for staff/standard user trying to see their own data (`computePerformance` and `includeLatestEvaluation` query parameters are available, but not used):
+```
+${origin}/identity
+```
+
+Sample request query string for staff trying to see a standard user's latest evaluation and aggregate performance:
+```
+${origin}/identity?targetUsername=John&computePerformance=true&includeLatestEvaluation=true
+```
+
+Sample success response for user accessing their own data with aggregate performance and latest AI evaluation:
+```json
+{
+	"userID": "9cf50949-67b5-4637-86f7-388145fafcc2",
+	"username": "John",
+	"email": "user@example.com",
+	"role": "standard",
+	"points": 117,
+	"created": "2024-09-17T11:51:42.837Z",
+	"lastLogin": "2024-09-17T11:51:42.837Z",
+	"activeGame": null,
+	"mindsListening": 40,
+	"mindsEQ": 30,
+	"mindsTone": 90,
+	"mindsHelpfulness": 80,
+	"mindsClarity": 60,
+	"mindsAssessment": "Needs more work.",
+	"banned": false,
+	"aggregatePerformance": {
+		"listening": 73,
+		"eq": 67,
+		"tone": 82,
+		"helpfulness": 56,
+		"clarity": 75
+	},
+	"latestEvaluation": {
+		"evaluationID": "1a870c8e-cd9a-4bfd-a13f-0dae2e7e6adf",
+		"listening": 70,
+		"eq": 60,
+		"tone": 80,
+		"helpfulness": 50,
+		"clarity": 70,
+		"simpleDescription": "You did a good job asking for help and thanking the customer.",
+		"fullDescription": "The user showed some understanding of the customer's needs but repeated the same phrase, which led to confusion. Encourage the user to provide more specific answers and to ask clarifying questions when needed. Practice responding to questions with clear directions and avoid repeating phrases that do not address the customer's request. This will help improve their helpfulness and clarity in future interactions.",
+		"associatedGameID": "c9feb98b-b7c4-4124-baba-ad6e9218fcaf"
+	}
+}
+```
+
+## GET `/identity/aggregatePerformance`
+
+Authorisation required: YES
+
+Both staff and account owners can access this endpoint. Staff must provide a `targetUsername` query string parameter for this endpoint. Account owners can only access their own data.
+
+This endpoint invokes the [aggregate performance computation](#aggregate-performance-computation) logic and returns the aggregate performance data for the user.
+
+Sample request query string for staff trying to see a standard user's aggregate performance:
+```
+${origin}/identity/aggregatePerformance?targetUsername=John
+```
+
+Sample success response:
+```json
+{
+	"listening": 73,
+	"eq": 67,
+	"tone": 82,
+	"helpfulness": 56,
+	"clarity": 75
+}
+```
 
 ## POST `/identity/new`
 
@@ -242,6 +411,50 @@ Sample success response:
 SUCCESS: Session refreshed. Authentication Token: AAAAAAAAAA
 ```
 
+## POST `/identity/update`
+
+Authorisation required: YES
+
+Available request body fields:
+- `username` - Must be unique. Can be omitted if not changing.
+- `email` - Must be unique. Can be omitted if not changing.
+
+Sample request body:
+```json
+{
+	"username": "johndoe",
+	"email": "email@example.com"
+}
+```
+
+Sample success response:
+```
+SUCCESS: Account updated successfully.
+```
+
+## POST `/identity/changePassword`
+
+Authorisation required: YES
+
+Note that re-login is required upon successful password change.
+
+Required fields:
+- `oldPassword` - Old password of the user.
+- `newPassword` - New password of the user. Must be at least 8 characters long.
+
+Sample request body:
+```json
+{
+	"oldPassword": "12345678",
+	"newPassword": "87654321"
+}
+```
+
+Sample success response:
+```
+SUCCESS: Password changed successfully. Please re-login.
+```
+
 ## POST `/identity/delete`
 
 Authorisation required: YES
@@ -271,7 +484,7 @@ Accounts with staff privilieges (`role` = `'staff'`) can carry out actions like 
 
 Aside the endpoints below, staff can also delete client accounts with a POST request to `/identity/delete` ([see this](#post-identitydelete)). Staff can access game data as well; [see this.](#get-game)
 
-## POST `/staff/viewClients`
+## GET `/staff/viewClients`
 
 Authorisation required: YES, Staff only.
 
@@ -296,6 +509,37 @@ Sample success response:
 		"banned": false
 	}
 ]
+```
+
+## GET `/staff/view/<clientID>`
+
+Authorisation required: YES, Staff only.
+
+No required body fields, but client ID must be provided in the URL.
+
+Sample request URL:
+```
+${origin}/staff/view/98c7c6c6-99e5-4a96-8914-6f75fdc4de2c
+```
+
+Sample success response:
+```json
+{
+	"userID": "d6a66b23-e7fa-49b7-8e13-d49bf4f60b52",
+	"username": "someuser2",
+	"email": "email@example.com",
+	"points": 0,
+	"created": "2024-09-13T11:52:15.806Z",
+	"lastLogin": "2024-09-13T11:52:15.806Z",
+	"activeGame": null,
+	"mindsListening": null,
+	"mindsEQ": null,
+	"mindsTone": null,
+	"mindsHelpfulness": null,
+	"mindsClarity": null,
+	"mindsAssessment": null,
+	"banned": false
+}
 ```
 
 ## POST `/staff/banClient`
@@ -386,11 +630,154 @@ Sample success response:
 SUCCESS: MINDS evaluation removed.
 ```
 
+## GET `/scenario`
+
+(Same as [GET `/game/scenarios`](#get-gamescenarios))
+
+Authorisation required: NONE
+
+No required body fields. Retrieves all scenarios in the system.
+
+Sample success response body:
+```json
+[
+	{
+		"scenarioID": "2f183b1f-681a-4e38-a359-80fd25d4d743",
+		"name": "Retail Customer Service",
+		"backgroundImage": "retail.png",
+		"description": "An AI customer will ask for help when searching for something specific in a retail store. Learn to respond courteously and in an easy-to-understand manner as a retail worker in the store.",
+		"modelRole": "customer",
+		"userRole": "retail worker",
+		"created": "2024-09-11T15:38:48.287Z",
+		"createdAt": "2024-09-11T15:38:48.000Z",
+		"updatedAt": "2024-09-11T15:40:31.000Z"
+	},
+	{
+		"scenarioID": "62b140f9-ea94-47ee-8d0a-868745319933",
+		"name": "Peer Conversation",
+		"backgroundImage": "peerconvo.png",
+		"description": "Talk to an AI peer from school about a random topic. Learn to engage in conversation and response naturally in peer-to-peer conversations.",
+		"modelRole": "classmate",
+		"userRole": "student",
+		"created": "2024-09-11T15:40:03.706Z",
+		"createdAt": "2024-09-11T15:40:03.000Z",
+		"updatedAt": "2024-09-11T15:40:03.000Z"
+	},
+	{
+		"scenarioID": "8f8be105-fcdd-4f8c-bfd9-2f7f42c98f97",
+		"name": "Cafetaria Food Order",
+		"backgroundImage": "cafetaria.png",
+		"description": "An AI customer will order food from you in a cafetaria. Understand the complexity of taking orders and responding as a vendor in the cafetaria.",
+		"modelRole": "customer",
+		"userRole": "vendor",
+		"created": "2024-09-11T15:38:48.291Z",
+		"createdAt": "2024-09-11T15:38:48.000Z",
+		"updatedAt": "2024-09-11T15:38:48.000Z"
+	}
+]
+```
+
+## POST `/scenario/new`
+
+Authorisation required: YES, Staff only.
+
+Required fields (**Multi-part form data**):
+- `name` - Name of the scenario.
+- `description` - Description of the scenario.
+- `image` - Image file of the background image for this scenario.
+- `modelRole` - Role of the AI model in the scenario.
+- `userRole` - Role of the user in the scenario.
+
+Sample multi-part request body:
+
+<img width="594" alt="Screenshot 2024-09-12 at 12 48 17 AM" src="https://github.com/user-attachments/assets/49cba4d1-deec-4f94-8c7e-0c717bc632ac">
+
+Sample success response:
+```json
+{
+	"message": "SUCCESS: Scenario created successfully.",
+	"newScenario": {
+		"scenarioID": "6cf6f2cf-eb54-4e21-9d1c-0576ab5cd92b",
+		"name": "SampleNewScenario",
+		"backgroundImage": "e049ce3d-82e3-4b07-9bed-552e265e2e53.png",
+		"description": "This is a sample scenario.",
+		"modelRole": "Mother",
+		"userRole": "John",
+		"created": "2024-09-11T07:13:38.316Z"
+	}
+}
+```
+
+## POST `/scenario/enforceDefaults`
+
+Authorisation required: YES, Staff only.
+
+No required body fields. Will automatically enforce the default scenarios hard-coded in the system.
+
+Sample success response:
+```
+SUCCESS: Default scenarios enforced successfully.
+```
+
+## POST `/scenario/delete`
+
+Authorisation required: YES, Staff only.
+
+Required fields:
+- `scenarioID` - ID of the scenario to delete. Can be used instead of `scenarioName` field.
+- `scenarioName` - Name of the scenario to delete. Can be used instead of `scenarioID` field.
+
+Sample request body:
+```json
+{
+	"scenarioID": "6cf6f2cf-eb54-4e21-9d1c-0576ab5cd92b"
+}
+```
+
+Sample success response:
+```
+SUCCESS: Scenario deleted successfully.
+```
+
+## POST `/scenario/update`
+
+Authorisation required: YES, Staff only.
+
+Required fields:
+- `scenarioID` - ID of the scenario to update.
+
+Optional fields:
+- `name` - Name of the scenario.
+- `description` - Description of the scenario.
+- `image` - Image file of the background image for this scenario.
+- `modelRole` - Role of the AI model in the scenario.
+- `userRole` - Role of the user in the scenario.
+
+Sample multi-part request body:
+
+<img width="594" alt="Screenshot 2024-09-12 at 12 51 14 AM" src="https://github.com/user-attachments/assets/ba70bf2f-6198-4bbc-bc1d-4a6c69a11d92">
+
+Sample success response:
+```json
+{
+	"message": "SUCCESS: Scenario updated successfully.",
+	"newScenario": {
+		"scenarioID": "6cf6f2cf-eb54-4e21-9d1c-0576ab5cd92b",
+		"name": "SampleNewScenario",
+		"backgroundImage": "467e864a-11f1-4dbc-9533-25ad45b5f945.jpg",
+		"description": "This is a sample scenario.",
+		"modelRole": "Mother",
+		"userRole": "Oliver",
+		"created": "2024-09-11T07:13:38.316Z"
+	}
+}
+```
+
 # Game Management
 
 Endpoints at `/game` offer comprehensive game management functionality. Games are fluid objects, with many sub-nested objects for the dialogue back and forths between the computer and the user.
 
-Games are AI-generated interactions set in specific pre-set scenarios. The user responds to AI-generated prompts to practice making conversation at these kinds of scenarios. Using AI, inappropriate/irrelevant/inaccurate responses will be detected and the client will be told to re-try. A suggested AI generated response will be provided.
+Games are AI-generated interactions set in specific pre-set scenarios. The user responds to AI-generated prompts to practice making conversation at these kinds of scenarios. Using AI, inappropriate/irrelevant/inaccurate responses will be detected and the client will be told to re-try. A suggested AI generated response will be provided. Thus, an OpenAI API key is required to be configured beforehand.
 
 From a technical perspective, each `Scenario` can have many `Game`s. `Game`s belong to a `Scenario` (`scenarioID`) and a user (`userID`).
 
@@ -406,22 +793,37 @@ Sample success response:
 ```json
 [
 	{
-		"scenarioID": "39b4db53-4a1a-4c02-bf2e-46a260268500",
-		"name": "Cafetaria",
-		"backgroundImage": "cafetaria.png",
-		"description": "Cafetarias are places where you can buy food and drinks. This scenario is designed to simulate the interactions between a customer and a cashier.",
-		"created": "2024-09-06T13:52:51.404Z",
-		"createdAt": "2024-09-06T13:52:51.000Z",
-		"updatedAt": "2024-09-06T13:52:51.000Z"
+		"scenarioID": "2f183b1f-681a-4e38-a359-80fd25d4d743",
+		"name": "Retail Customer Service",
+		"backgroundImage": "retail.png",
+		"description": "An AI customer will ask for help when searching for something specific in a retail store. Learn to respond courteously and in an easy-to-understand manner as a retail worker in the store.",
+		"modelRole": "customer",
+		"userRole": "retail worker",
+		"created": "2024-09-11T15:38:48.287Z",
+		"createdAt": "2024-09-11T15:38:48.000Z",
+		"updatedAt": "2024-09-11T15:40:31.000Z"
 	},
 	{
-		"scenarioID": "de2617e6-b29f-4488-8828-d2abb8a87c5e",
-		"name": "Retail",
-		"backgroundImage": "retail.png",
-		"description": "Retail stores are very commonplace. Whenever you need to buy some groceries or food, you may encounter interactions. This scenario is designed to simulate the interactions between a customer and a cashier.",
-		"created": "2024-09-06T13:52:51.400Z",
-		"createdAt": "2024-09-06T13:52:51.000Z",
-		"updatedAt": "2024-09-06T13:52:51.000Z"
+		"scenarioID": "62b140f9-ea94-47ee-8d0a-868745319933",
+		"name": "Peer Conversation",
+		"backgroundImage": "peerconvo.png",
+		"description": "Talk to an AI peer from school about a random topic. Learn to engage in conversation and response naturally in peer-to-peer conversations.",
+		"modelRole": "classmate",
+		"userRole": "student",
+		"created": "2024-09-11T15:40:03.706Z",
+		"createdAt": "2024-09-11T15:40:03.000Z",
+		"updatedAt": "2024-09-11T15:40:03.000Z"
+	},
+	{
+		"scenarioID": "8f8be105-fcdd-4f8c-bfd9-2f7f42c98f97",
+		"name": "Cafetaria Food Order",
+		"backgroundImage": "cafetaria.png",
+		"description": "An AI customer will order food from you in a cafetaria. Understand the complexity of taking orders and responding as a vendor in the cafetaria.",
+		"modelRole": "customer",
+		"userRole": "vendor",
+		"created": "2024-09-11T15:38:48.291Z",
+		"createdAt": "2024-09-11T15:38:48.000Z",
+		"updatedAt": "2024-09-11T15:38:48.000Z"
 	}
 ]
 ```
@@ -432,106 +834,273 @@ Authorisation required: YES
 
 Both staff and account owners can access this endpoint. Staff can access all games, and can also filter by user. Account owners can only access their own games, and can also choose to just see their active game.
 
-All possible body fields:
+All possible query parameter fields:
 - `targetUsername` - Only if you have staff privileges. Filters games by the user's username. Not providing this field will show all games.
 - `activeGame` - Only for standard users. If set to `true`, will only show the user's active game. Will return an error message if there is no game currently active. If set to `false`, will show all of the user's games.
-- `gameID` - Only for standard users. If set, will show the game with the specified ID. If not set, will show all games.
+- `gameID` - For all users. If set, will show the game with the specified ID. If not set, will show all games.
 - `includeDialogues` - For all users. If set to `true`, will include all dialogues for each game. Default is `false`.
+- `includeScenario` - For all users. If set to `true`, scenario data will be included under `scenario` parameter. Default is `false`.
+- `includeEvaluation` - For all users. If set to `true`, evaluation data will be included under `evaluation` parameter. Default is `false`. Do note that some games may not have evaluations just yet, in which case the parameter's value will be `null`.
+- `includeSimpleConversationLog` - For all users. If set to `true`, a chronologically ordered array of objects containing each actual dialogue message and who it was from will be provided under the `conversationLog` parameter. Can help to easily understand the coonversation flow in a game. Default is `false`. Note that unsuccessful dialogue attempts are not included.
 
-Sample request body for staff:
-```json
-{
-    "targetUsername": "johndoe"
-}
+Sample request query string for staff:
+```
+${origin}/game?targetUsername=someuser
 ```
 
-Sample request body for standard users:
-```json
-{
-    "activeGame": true,
-    "includeDialogues": true
-}
+Sample request query for standard users:
+```
+${origin}/game?activeGame=true&includeDialogues=true&includeEvaluation=true
 ```
 
-Sample success body for standard users when showing active game with include dialogues enabled:
+For this sample request query from a standard user:
+```
+${origin}/game?includeDialogues=true&includeEvaluation=true&includeScenario=true&activeGame=false&includeSimpleConversationLog=true
+```
+
+Here's an example success response body:
 ```json
-{
-	"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
-	"startedTimestamp": "2024-09-06T14:47:44.434Z",
-	"status": "ongoing",
-	"userID": "f7eadd26-6922-4db0-a628-08d5c2afb49b",
-	"scenarioID": "39b4db53-4a1a-4c02-bf2e-46a260268500",
-	"dialogues": [
-		{
-			"dialogueID": "137dc223-84c4-47b4-8d73-85dccdaf4cab",
-			"by": "system",
-			"attemptsCount": 1,
-			"successful": false,
-			"createdTimestamp": "2024-09-06T14:47:44.439Z",
-			"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
-			"attempts": [
-				{
-					"attemptID": "7833c27a-eb51-46a4-8b4d-38bec3a914e3",
-					"attemptNumber": 1,
-					"content": "Hi! What's your name?",
-					"successful": true,
-					"timestamp": "2024-09-06T14:47:44.441Z",
-					"timeTaken": 0,
-					"dialogueID": "137dc223-84c4-47b4-8d73-85dccdaf4cab"
-				}
-			]
+[
+	{
+		"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+		"startedTimestamp": "2024-09-11T14:36:49.913Z",
+		"status": "complete",
+		"pointsEarned": 25,
+		"userID": "f7eaf051-f093-418a-891d-204d2dfd40f5",
+		"scenarioID": "5666e7f1-ec04-4325-9618-b84116f9b4eb",
+		"dialogues": [
+			{
+				"dialogueID": "1912d248-8f50-42d7-8fd4-f4d6847a2bc8",
+				"by": "user",
+				"attemptsCount": 1,
+				"successful": true,
+				"createdTimestamp": "2024-09-11T14:38:03.887Z",
+				"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+				"attempts": [
+					{
+						"attemptID": "db73169e-098e-4e11-adf4-9a76da5abfd5",
+						"attemptNumber": 1,
+						"content": "Mainly how to do a reverse flip, ollies and stuff like that. What have you been up to?",
+						"successful": true,
+						"timestamp": "2024-09-11T14:38:03.899Z",
+						"timeTaken": 10,
+						"dialogueID": "1912d248-8f50-42d7-8fd4-f4d6847a2bc8"
+					}
+				]
+			},
+			{
+				"dialogueID": "22e4f75d-bd70-4cbc-a07e-1864f8e1c7c5",
+				"by": "user",
+				"attemptsCount": 1,
+				"successful": true,
+				"createdTimestamp": "2024-09-11T14:37:37.186Z",
+				"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+				"attempts": [
+					{
+						"attemptID": "7df1bf0a-5a50-46e2-83e6-58d1db1ce82a",
+						"attemptNumber": 1,
+						"content": "Not yet, but I'm making good progress. I met a new guy who's really good at some tricks last week, he's teaching me",
+						"successful": true,
+						"timestamp": "2024-09-11T14:37:37.189Z",
+						"timeTaken": 10,
+						"dialogueID": "22e4f75d-bd70-4cbc-a07e-1864f8e1c7c5"
+					}
+				]
+			},
+			{
+				"dialogueID": "41474bfa-fe0e-4d7b-a4a2-ef0b67e4c5c9",
+				"by": "system",
+				"attemptsCount": 1,
+				"successful": true,
+				"createdTimestamp": "2024-09-11T14:36:50.576Z",
+				"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+				"attempts": [
+					{
+						"attemptID": "b5025736-ce05-49db-9dfa-fa8db0f9c74e",
+						"attemptNumber": 1,
+						"content": "Hey! How's it going today? Did you do anything fun after school?",
+						"successful": true,
+						"timestamp": "2024-09-11T14:36:50.580Z",
+						"timeTaken": 0,
+						"dialogueID": "41474bfa-fe0e-4d7b-a4a2-ef0b67e4c5c9"
+					}
+				]
+			},
+			{
+				"dialogueID": "5f091482-a9fd-4cd4-a2fd-33dbda3491f8",
+				"by": "system",
+				"attemptsCount": 1,
+				"successful": true,
+				"createdTimestamp": "2024-09-11T14:37:14.907Z",
+				"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+				"attempts": [
+					{
+						"attemptID": "cffdcafe-778e-4a05-bc22-35823555b8f5",
+						"attemptNumber": 1,
+						"content": "That sounds like so much fun! Did you learn any new tricks on your roller skates?",
+						"successful": true,
+						"timestamp": "2024-09-11T14:37:14.911Z",
+						"timeTaken": 0,
+						"dialogueID": "5f091482-a9fd-4cd4-a2fd-33dbda3491f8"
+					}
+				]
+			},
+			{
+				"dialogueID": "81bfcaf8-ed9d-473b-a961-ae2ed6acc5aa",
+				"by": "user",
+				"attemptsCount": 2,
+				"successful": true,
+				"createdTimestamp": "2024-09-11T14:36:52.291Z",
+				"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+				"attempts": [
+					{
+						"attemptID": "6edf5586-d3f3-4a9c-82f9-c8959a4ce0b7",
+						"attemptNumber": 2,
+						"content": "I'm great! After school, took the roller skates out for a bit at the park!",
+						"successful": true,
+						"timestamp": "2024-09-11T14:37:13.775Z",
+						"timeTaken": 10,
+						"dialogueID": "81bfcaf8-ed9d-473b-a961-ae2ed6acc5aa"
+					},
+					{
+						"attemptID": "f550b02f-4427-4c93-bff8-86aaab123e6a",
+						"attemptNumber": 1,
+						"content": "I really like plants",
+						"successful": false,
+						"timestamp": "2024-09-11T14:36:52.293Z",
+						"timeTaken": 10,
+						"dialogueID": "81bfcaf8-ed9d-473b-a961-ae2ed6acc5aa"
+					}
+				]
+			},
+			{
+				"dialogueID": "99944d58-385b-4339-871c-00e7272f4873",
+				"by": "system",
+				"attemptsCount": 1,
+				"successful": true,
+				"createdTimestamp": "2024-09-11T14:37:38.269Z",
+				"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+				"attempts": [
+					{
+						"attemptID": "a0f54a42-e4ab-487d-9f67-dbf7ae44aea4",
+						"attemptNumber": 1,
+						"content": "That's awesome! What kind of tricks are you hoping to learn from him?",
+						"successful": true,
+						"timestamp": "2024-09-11T14:37:38.271Z",
+						"timeTaken": 0,
+						"dialogueID": "99944d58-385b-4339-871c-00e7272f4873"
+					}
+				]
+			},
+			{
+				"dialogueID": "a1f2b1f1-b13d-4df5-8831-392d1494e0c9",
+				"by": "system",
+				"attemptsCount": 1,
+				"successful": true,
+				"createdTimestamp": "2024-09-11T14:38:05.130Z",
+				"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+				"attempts": [
+					{
+						"attemptID": "78bd65bd-57ba-4ffe-8b40-34573b2e46c8",
+						"attemptNumber": 1,
+						"content": "That sounds really cool! I’ve just been hanging out with friends and playing video games. Let’s chat again soon!",
+						"successful": true,
+						"timestamp": "2024-09-11T14:38:05.135Z",
+						"timeTaken": 0,
+						"dialogueID": "a1f2b1f1-b13d-4df5-8831-392d1494e0c9"
+					}
+				]
+			},
+			{
+				"dialogueID": "fb5c3825-39f4-48a1-86fb-c534d2a834de",
+				"by": "user",
+				"attemptsCount": 1,
+				"successful": true,
+				"createdTimestamp": "2024-09-11T14:38:14.900Z",
+				"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+				"attempts": [
+					{
+						"attemptID": "e5e3ce6a-9616-45ea-a875-e2e2148d46ab",
+						"attemptNumber": 1,
+						"content": "For sure! See you tomorrow!",
+						"successful": true,
+						"timestamp": "2024-09-11T14:38:14.904Z",
+						"timeTaken": 10,
+						"dialogueID": "fb5c3825-39f4-48a1-86fb-c534d2a834de"
+					}
+				]
+			}
+		],
+		"scenario": {
+			"scenarioID": "5666e7f1-ec04-4325-9618-b84116f9b4eb",
+			"name": "Peer Conversation",
+			"backgroundImage": "peerconvo.png",
+			"description": "Talk to an AI peer from school about a random topic. Learn to engage in conversation and response naturally in peer-to-peer conversations.",
+			"modelRole": "classmate",
+			"userRole": "student",
+			"created": "2024-09-11T10:02:12.371Z"
 		},
-		{
-			"dialogueID": "9b562ede-7480-4616-b143-e174a3dfb981",
-			"by": "user",
-			"attemptsCount": 1,
-			"successful": true,
-			"createdTimestamp": "2024-09-06T14:47:46.501Z",
-			"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
-			"attempts": [
-				{
-					"attemptID": "e3a3618b-e7af-4f9e-9868-0286dd7d0081",
-					"attemptNumber": 1,
-					"content": "my name is john!",
-					"successful": true,
-					"timestamp": "2024-09-06T14:47:46.503Z",
-					"timeTaken": 10,
-					"dialogueID": "9b562ede-7480-4616-b143-e174a3dfb981"
-				}
-			]
+		"evaluation": {
+			"evaluationID": "3d0943c9-fc51-4ad6-8d95-90c561282083",
+			"listening": 85,
+			"eq": 80,
+			"tone": 90,
+			"helpfulness": 85,
+			"clarity": 95,
+			"simpleDescription": "You did a great job talking about your interests and asking questions! Keep practicing to make conversations even better.",
+			"fullDescription": "The user showed good listening skills and engaged well with the classmate. They asked relevant questions and shared personal interests, which helped maintain the flow of conversation. Encourage the user to keep practicing follow-up questions to deepen discussions. Also, remind them to occasionally check in on the other person's feelings or experiences to enhance emotional connections. Overall, they are making great progress in social interactions!",
+			"associatedGameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2"
 		},
-		{
-			"dialogueID": "cd066915-6813-475d-9117-5abd59cc39f5",
-			"by": "system",
-			"attemptsCount": 1,
-			"successful": false,
-			"createdTimestamp": "2024-09-06T14:47:46.510Z",
-			"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
-			"attempts": [
-				{
-					"attemptID": "450c05bd-5bc2-4e37-838a-ea24552a9dfc",
-					"attemptNumber": 1,
-					"content": "Nice to meet you! Where are you from?",
-					"successful": true,
-					"timestamp": "2024-09-06T14:47:46.512Z",
-					"timeTaken": 0,
-					"dialogueID": "cd066915-6813-475d-9117-5abd59cc39f5"
-				}
-			]
-		}
-	]
-}
+		"conversationLog": [
+			{
+				"by": "system",
+				"content": "Hey! How's it going today? Did you do anything fun after school?"
+			},
+			{
+				"by": "user",
+				"content": "I'm great! After school, took the roller skates out for a bit at the park!"
+			},
+			{
+				"by": "system",
+				"content": "That sounds like so much fun! Did you learn any new tricks on your roller skates?"
+			},
+			{
+				"by": "user",
+				"content": "Not yet, but I'm making good progress. I met a new guy who's really good at some tricks last week, he's teaching me"
+			},
+			{
+				"by": "system",
+				"content": "That's awesome! What kind of tricks are you hoping to learn from him?"
+			},
+			{
+				"by": "user",
+				"content": "Mainly how to do a reverse flip, ollies and stuff like that. What have you been up to?"
+			},
+			{
+				"by": "system",
+				"content": "That sounds really cool! I’ve just been hanging out with friends and playing video games. Let’s chat again soon!"
+			},
+			{
+				"by": "user",
+				"content": "For sure! See you tomorrow!"
+			}
+		]
+	}
+]
 ```
 
-Without include dialogues:
+Without all optional sub-datasets included:
 ```json
-{
-	"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73",
-	"startedTimestamp": "2024-09-06T14:47:44.434Z",
-	"status": "ongoing",
-	"userID": "f7eadd26-6922-4db0-a628-08d5c2afb49b",
-	"scenarioID": "39b4db53-4a1a-4c02-bf2e-46a260268500"
-}
+[
+	{
+		"gameID": "85eb9457-4539-4780-9db3-e6c2ec47e2d2",
+		"startedTimestamp": "2024-09-11T14:36:49.913Z",
+		"status": "complete",
+		"pointsEarned": 25,
+		"userID": "f7eaf051-f093-418a-891d-204d2dfd40f5",
+		"scenarioID": "5666e7f1-ec04-4325-9618-b84116f9b4eb"
+	}
+]
 ```
 
 ## POST `/game/new`
@@ -602,13 +1171,35 @@ Authorisation required: YES, Standard only.
 
 This endpoint is a bit more complex. Here are the different kinds of situations/types of responses you may encounter:
 - **Re-try prompt:** If the response you provided is inappropriate/irrelevant/inaccurate as deemed by AI, the system will ask you to re-try. The system will provide an AI-generated suggested response you can try as well.
-- **Dialogue success:** If the response you provided was appropriate, the system will move on and provide you the next AI-generated dialogue prompt. (`aiResponse`).
-- **Game complete:** If the system has no more dialogue prompts to provide, the game is marked as complete. It is no longer active. *Each conversation is only 4 AI prompts long.*
+- **Dialogue success:** If the response you provided was appropriate, the system will move on and provide you the next AI-generated dialogue prompt (`aiResponse`).
+- **Game complete:** If the system has no more dialogue prompts to provide, the game is marked as complete. It is no longer active.
+
+Take note that each game is only 4 AI prompts long, or a total of 8 dialogues from both the system and the user. The last prompt generated by the AI will intentionally sound like a conversation closer, so that the interaction can be brought to a natural end.
+
+If the final `newDialogue` request of a game is successful, the following occur in sequence:
+1. The game is marked as complete.
+2. The game is de-linked from the user's profile as the active game.
+3. Based on the entire conversation log, the AI sub-system evaluates the performance of the user across specific metric domains specified in the `GameEvaluation` table.
+4. The new evaluation data is created as a new record in the `GameEvaluation` table.
+5. Based on the gamification scheme described [here](#gamification), points are awarded to the user. The game's `pointsEarned` field is updated and the `user`'s `points` field is supplemented.
+6. A game completion response is returned to the client with the number of points earned and the simple feedback from the `GameEvaluation`.
+
+If, for some reason, the AI evaluation of the game fails, the response will just be a game completion message, which also informs the client that the AI evaluation was unfortunately unsuccessful.
+
+In this case, the client can request an AI evaluation of the game (provide the `gameID`) to [the `/game/requestEvaluation` endpoint](#post-gamerequestevaluation).
 
 Required fields:
 - `content` - Content of the dialogue attempt.
 - `timeTaken` - Time taken to utter the dialogue attempt.
-- `debugSuccess` (TEMPORARY) - Boolean value to force the system to mark the dialogue attempt as successful. Default is `false`.
+- `debugSuccess` (FOR DEBUG USE ONLY) - Boolean value to force the system to mark the dialogue attempt as successful. Default is `false`.
+
+Sample request body:
+```json
+{
+	"content": "I hate you",
+	"timeTaken": 10.0
+}
+```
 
 Sample re-try success response:
 ```json
@@ -639,7 +1230,41 @@ Sample dialogue success response:
 Sample game complete response:
 ```json
 {
-	"message": "SUCCESS: Conversation complete. Thanks for playing!"
+	"message": "SUCCESS: Conversation complete. Thanks for playing!",
+	"pointsEarned": 25,
+	"feedback": "You did a great job talking about your interests and asking questions! Keep practicing to make conversations even better."
+}
+```
+
+Sample game complete response where game's AI evaluation was unsuccessful:
+```json
+{
+	"message": "SUCCESS: Conversation complete. Thanks for playing! Something went wrong in evaluating your performance. Please try again later."
+}
+```
+
+## POST `/game/requestEvaluation`
+
+Authorisation required: YES
+
+Both staff and standard users can access this endpoint. Staff can request evaluations regardless of whether an evaluation has already been done, in which case the old evaluation is deleted. Standard users can only request evaluations for their own games, when they are complete and if they haven't already been evaluated.
+
+Required fields:
+- `gameID` - ID of the game to request evaluation for.
+
+Sample request body:
+```json
+{
+	"gameID": "36c0d4b9-5d4d-43a1-a69b-7a71f2d21c73"
+}
+```
+
+Sample success response:
+```json
+{
+	"message": "SUCCESS: Evaluation complete.",
+	"pointsEarned": 15,
+	"feedback": "The user had difficulty understanding and responding to the customer’s needs."
 }
 ```
 

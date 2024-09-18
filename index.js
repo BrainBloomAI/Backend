@@ -2,24 +2,32 @@ require('./services/BootCheck').check()
 const express = require('express');
 const cors = require('cors');
 const db = require('./models');
-const { User, Scenario, Game, GameDialogue, DialogueAttempt } = db;
-const { Encryption } = require('./services');
+const { User, Scenario, Game, GameDialogue, DialogueAttempt, GameEvaluation } = db;
+const { Universal, Logger, Cache, FileManager, Encryption, OpenAIChat } = require('./services');
 require('dotenv').config()
 
 const env = process.env.DB_CONFIG || 'development';
 const config = require('./config/config.json')[env];
 
 // Set up services
-const Universal = require('./services/Universal')
-
-const Logger = require('./services/Logger')
 Logger.setup()
 
-const Cache = require('./services/Cache')
 Cache.load();
 
 if (Cache.get("usageLock") == undefined) {
     Cache.set("usageLock", false)
+}
+
+FileManager.setup()
+    .then(res => { if (res !== true) { throw new Error(res) } })
+    .catch(err => { Logger.logAndThrow(err) })
+
+if (OpenAIChat.checkPermission()) {
+    console.log("MAIN: OpenAI Chat service is enabled.")
+    const initialisation = OpenAIChat.initialise();
+    if (initialisation !== true) {
+        console.log(`MAIN: OpenAI Chat service failed to initialise. Error: ${initialisation}`)
+    }
 }
 
 // Import middleware
@@ -72,52 +80,26 @@ if (config["routerRegistration"] != "automated") {
 
 async function onDBSynchronise() {
     // SQL-reliant service setup
-    if (!await Scenario.findOne({ where: { name: "Retail Customer Service" }})) {
-        await Scenario.create({
-            scenarioID: Universal.generateUniqueID(),
-            name: "Retail Customer Service",
-            backgroundImage: "retail.png",
-            description: "I'll send you later.",
-            modelRole: 'customer',
-            userRole: 'retail worker',
-            created: new Date().toISOString()
-        })
-    }
-
-    if (!await Scenario.findOne({ where: { name: "Cafetaria Food Order" }})) {
-        await Scenario.create({
-            scenarioID: Universal.generateUniqueID(),
-            name: "Cafetaria Food Order",
-            backgroundImage: "cafetaria.png",
-            description: "I'll send you later.",
-            modelRole: 'customer',
-            userRole: 'vendor',
-            created: new Date().toISOString()
-        })
+    for (const name of Object.keys(Universal.data.defaultScenarios)) {
+        if (!await Scenario.findOne({ where: { name: Universal.data.defaultScenarios[name].name }})) {
+            await Scenario.create({
+                scenarioID: Universal.generateUniqueID(),
+                name: Universal.data.defaultScenarios[name].name,
+                backgroundImage: Universal.data.defaultScenarios[name].backgroundImage,
+                description: Universal.data.defaultScenarios[name].description,
+                modelRole: Universal.data.defaultScenarios[name].modelRole,
+                userRole: Universal.data.defaultScenarios[name].userRole,
+                created: new Date().toISOString()
+            })
+        }
     }
 
     if (process.env.DEBUG_MODE === "True") {
-        Universal.data = {
-            "scenarioPrompts": {
-                "Retail Customer Service": [
-                    "Hey! How are you doing today?",
-                    "There's a discount on the tomatoes if you get 3 or more. Would you like to get some?",
-                    "Would you like to pay by card or cash?",
-                    "Do you need a bag for your items?"
-                ],
-                "Cafetaria Food Order": [
-                    "Hi! What's your name?",
-                    "Nice to meet you! Where are you from?",
-                    "What would you like to order?",
-                    "Would you like to pay by card or cash?",
-                ]
-            }
-        }
-
-        await Game.destroy({ where: {} })
-        await GameDialogue.destroy({ where: {} })
-        await DialogueAttempt.destroy({ where: {} })
-        await User.update({ activeGame: null }, { where: {} })
+        // await Game.destroy({ where: {} })
+        // await GameEvaluation.destroy({ where: {} })
+        // await GameDialogue.destroy({ where: {} })
+        // await DialogueAttempt.destroy({ where: {} })
+        // await User.update({ activeGame: null }, { where: {} })
     }
 }
 

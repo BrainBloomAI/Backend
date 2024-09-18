@@ -146,7 +146,10 @@ class OpenAIChat {
 
     // Generate an initial message based on a scenario
     static async generateInitialMessage(scenario) {
-        return await OpenAIChat.prompt("Initiate the conversation with me.", scenario, true);
+        const prompt = `
+        Initiate the conversation with me (${scenario.roles.userRole}) as ${scenario.roles.modelRole}.
+        `;
+        return await OpenAIChat.prompt(prompt, scenario, true);
     }
 
     // Generate an ideal response to the last message
@@ -161,9 +164,36 @@ class OpenAIChat {
             This scenario is for a person with intellectual disabilities to learn appropriate communication in real-life settings.
             Generate an ideal response that is clear, polite, and relevant to what the ${scenario.roles.modelRole} last said in this context.
             Limit the length of the response to something that will be easy to repeat.
+            Please provide only the message content without any extra information or formatting, ensure that the response is by ${scenario.roles.userRole}.
         `;
         
         return await OpenAIChat.prompt(prompt, scenario, true);
+    }
+
+    // Generate the wrap up message for the conversation
+    static async generateWrapUpMessage(conversationHistory, scenario) {
+        const prompt = `
+        You are role-playing as a ${scenario.roles.modelRole} in a ${scenario.description.name} scenario where the ${scenario.roles.userRole} (user) is assisting you.
+        The goal of this scenario is to simulate a real-life situation to help the user develop communication skills for social inclusion.
+        The context of this scenario is: "${scenario.description.fullDescription}".
+        The interaction is at its end now and needs to be wrapped up.
+
+        Here is the full conversation history:
+        ${conversationHistory.conversationLog.map((message) => {
+            return `${message.by}: ${message.content}`;
+        }).join('\n')}
+        
+        As the ${scenario.roles.modelRole}, generate a polite, clear, and socially appropriate response that ends the conversation naturally without repeating information already mentioned. 
+        Your response should stay within the context of the conversation, and be easy to understand. 
+        Avoid introducing complex language or redundant points, and keep the it short and easy to understand for people with intellectual disabilities.
+        
+        Provide response content only without any extra information or formatting.
+
+        ${scenario.roles.modelRole} (You):
+        `;
+
+        const finalMessage = await OpenAIChat.prompt(prompt, scenario, true);
+        return finalMessage;
     }
 
     // Generate the next message in conversation based on user's response
@@ -172,33 +202,28 @@ class OpenAIChat {
         const lastUserMessage = conversationHistory.conversationLog
             .filter(message => message.by === scenario.roles.userRole)  // Get all messages by the user
             .slice(-1)[0];  // Get the last message
-        
-        if (!lastUserMessage) {
-            throw new Error('No user message found in conversation history.');
-        } else {
-            console.log(lastUserMessage);
-        }
     
         const prompt = `
-        You are role-playing as a ${scenario.roles.modelRole} in a ${scenario.description.name} scenario where the ${scenario.roles.userRole} is assisting you.
+        You are role-playing as a ${scenario.roles.modelRole} in a ${scenario.description.name} scenario where the ${scenario.roles.userRole} (user) is assisting you.
         The goal of this scenario is to simulate a real-life situation to help the user develop communication skills for social inclusion.
         The context of this scenario is: "${scenario.description.fullDescription}".
 
         Here is the conversation history so far:
         ${conversationHistory.conversationLog.map((message) => {
-            return `${message.by === scenario.roles.modelRole ? 'You' : 'User'}: ${message.content}`;
+            return `${message.by}: ${message.content}`;
         }).join('\n')}
-
-        The ${scenario.roles.userRole}, who is a person with intellectual disabilities, has just said: "${lastUserMessage.content}".
         
-        Please generate a polite, clear, and socially appropriate response that progresses the conversation naturally without repeating information already mentioned, especially anything related to the user mentioning "My friend is looking for a birthday gift" or similar phrases.
-        
+        As the ${scenario.roles.modelRole}, generate a polite, clear, and socially appropriate response that progresses the conversation naturally without repeating information already mentioned. 
         Your response should stay within the context of the conversation, encourage continued engagement, and be easy to understand. 
         Avoid introducing complex language or redundant points, and keep the it short and easy to understand for people with intellectual disabilities. 
         Ensure the conversation stays relevant and helpful.
+        
+        Provide response content only without any extra information or formatting.
+
+        ${scenario.roles.modelRole} (You):
         `;
 
-        const nextMessage = await OpenAIChat.prompt(prompt, true);
+        const nextMessage = await OpenAIChat.prompt(prompt, scenario, true);
         return nextMessage;
     }
 
@@ -212,18 +237,26 @@ class OpenAIChat {
             .filter(message => message.by === scenario.roles.modelRole)
             .slice(-1)[0];  // Get the last system message
         
-        console.log(lastSystemMessage);
-        
         const prompt = `
-            In this ${scenario.description.tag} scenario, the ${scenario.roles.userRole} (a person with intellectual disabilities) has responded with: "${conversationHistory.targetAttempt}"
-            to the last message: "${lastSystemMessage.content}". 
-            The goal of the scenario is to teach the ${scenario.roles.userRole} how to communicate appropriately in social interactions.
-            Evaluate whether this response is relevant, clear, and socially appropriate in this ${scenario.description.name} context.
-            Respond with "true" if it is appropriate, or "false" if it is not.
+            You are evaluating a response in a ${scenario.description.name} scenario. The scenario is described as: "${scenario.description.fullDescription}".
+            
+            Here is the conversation history:
+            ${conversationHistory.conversationLog.map((message) => `${message.by}: ${message.content}`).join('\n')}
+            
+            The goal of this scenario is to help the ${scenario.roles.userRole} (the user, who has intellectual disabilities) learn how to communicate appropriately and effectively.
+            
+            The ${scenario.roles.modelRole} (you) last said: "${lastSystemMessage.content}"
+            The ${scenario.roles.userRole} has responded with: "${conversationHistory.targetAttempt}"
+            
+            Consider whether the response from the ${scenario.roles.userRole} is appropriate, relevant, clear, and socially suitable in the context of the entire conversation and scenario.
+            
+            Respond with "true" if the response is appropriate, or "false" if it is not. 
+            Ensure your response is based on the overall context and communication goals described.
+            In addition, be more lenient in your evaluation given that the user has intellectual disabilities.
+            Provide only "True" or "False" in your answer.
         `;
         
-        const evaluation = await OpenAIChat.prompt(prompt, true);
-        console.log(evaluation);
+        const evaluation = await OpenAIChat.prompt(prompt, scenario, true);
         return evaluation.content === 'True';
     }
 
@@ -242,17 +275,21 @@ class OpenAIChat {
             3. Tone appropriateness (was the user's tone polite and inclusive?)
             4. Helpfulness (did the user respond helpfully?)
             5. Clarity (was the response clear and easy to understand?)
+
+            In addition:
+            - Provide a simple, short description of the user’s performance for user feedback.
+            - Provide a detailed description of the user’s performance for staff feedback. Given that the staff are trained at dealing with people with intellectual disabiliteis, include detailed and constructive feedback for the staff to further teach the users for future interactions. Respond as if telling directly to the staff. Return as a paragraph.
     
-            Provide the results in the following format:
+            Provide the results separated by a pipe (|) symbol, without spaces or the label, in the following order:
             - Listening and comprehension: [percentage]%
             - Emotional intelligence: [percentage]%
             - Tone appropriateness: [percentage]%
             - Helpfulness: [percentage]%
             - Clarity: [percentage]%
-    
-            In addition:
-            - Provide a simple, short description of the user’s performance for user feedback.
-            - Provide a detailed description of the user’s performance for staff feedback.
+            - User Feedback: [short description]
+            - Staff Feedback: [detailed description]
+
+            Example: 0|0|0|0|0|Sample short description.|Sample very long description. Can be multiple lines.
     
             Conversation history: 
             ${conversationHistory.conversationLog.map((message) => {
@@ -261,43 +298,32 @@ class OpenAIChat {
         `;
     
         // Get the response from OpenAI
-        const evaluation = await OpenAIChat.prompt(prompt, true);
+        const evaluation = await OpenAIChat.prompt(prompt, scenario, true);
         const evaluationContent = evaluation.content;
-        console.log(evaluationContent);
+
+        const evaluationData = evaluationContent.split('|');
     
-        // Extract percentages using regex
-        const listeningMatch = evaluationContent.match(/Listening and comprehension: (\d+)%/);
-        const eqMatch = evaluationContent.match(/Emotional intelligence: (\d+)%/);
-        const toneMatch = evaluationContent.match(/Tone appropriateness: (\d+)%/);
-        const helpfulnessMatch = evaluationContent.match(/Helpfulness: (\d+)%/);
-        const clarityMatch = evaluationContent.match(/Clarity: (\d+)%/);
+        const listening = parseFloat(evaluationData[0]);
+        const eq = parseFloat(evaluationData[1]);
+        const tone = parseFloat(evaluationData[2]);
+        const helpfulness = parseFloat(evaluationData[3]);
+        const clarity = parseFloat(evaluationData[4]);
 
-        const listeningPercentage = listeningMatch ? parseInt(listeningMatch[1], 10) : 0;
-        const eqPercentage = eqMatch ? parseInt(eqMatch[1], 10) : 0;
-        const tonePercentage = toneMatch ? parseInt(toneMatch[1], 10) : 0;
-        const helpfulnessPercentage = helpfulnessMatch ? parseInt(helpfulnessMatch[1], 10) : 0;
-        const clarityPercentage = clarityMatch ? parseInt(clarityMatch[1], 10) : 0;
-
-        // Extract short description (for user feedback)
-        const shortDescriptionMatch = evaluationContent.match(/\*\*User Feedback:\*\*\s*(.*?)(?=\n\n|\Z)/s);
-        const shortDescription = shortDescriptionMatch ? shortDescriptionMatch[1].trim() : 'No short description provided.';
-
-        // Extract detailed description (for staff feedback)
-        const detailedDescriptionMatch = evaluationContent.match(/\*\*Staff Feedback:\*\*\s*(.*)/s);
-        const detailedDescription = detailedDescriptionMatch ? detailedDescriptionMatch[1].trim() : 'No detailed description provided.';
+        const userFeedback = evaluationData[5] ? evaluationData[5] : "No user feedback.";
+        const staffFeedback = evaluationData[6] ? evaluationData[6] : "No staff feedback.";
 
         // Return the extracted data
         return {
             scores: {
-                listening: listeningPercentage,
-                emotionalIntelligence: eqPercentage,
-                tone: tonePercentage,
-                helpfulness: helpfulnessPercentage,
-                clarity: clarityPercentage,
+                listening: listening,
+                emotionalIntelligence: eq,
+                tone: tone,
+                helpfulness: helpfulness,
+                clarity: clarity
             },
             descriptions: {
-                shortDescription,
-                detailedDescription
+                userFeedback,
+                staffFeedback
             }
         };
     }

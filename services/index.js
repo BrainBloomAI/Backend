@@ -9,17 +9,21 @@ const HTMLRenderer = require('./HTMLRenderer');
 const Logger = require('./Logger');
 const Universal = require('./Universal');
 const OpenAIChat = require('./OpenAIChat');
+const FireStorage = require('./FireStorage');
+const FileManager = require('./FileManager');
 
 const services = {
     BootCheck,
     Cache,
     Encryption,
     Extensions,
+    FileManager,
     FileOps,
+    FireStorage,
     HTMLRenderer,
     Logger,
-    Universal,
-    OpenAIChat
+    OpenAIChat,
+    Universal
 };
 
 fs.readdirSync(__dirname)

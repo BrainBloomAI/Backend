@@ -21,6 +21,10 @@ module.exports = (sequelize, DataTypes) => {
         status: {
             type: DataTypes.STRING,
             allowNull: false
+        },
+        pointsEarned: {
+            type: DataTypes.INTEGER,
+            allowNull: true
         }
     }, { tableName: 'games' });
 
@@ -45,9 +49,13 @@ module.exports = (sequelize, DataTypes) => {
             onDelete: "cascade"
         })
 
-        Game.belongsTo(models.GameEvaluation, {
-            foreignKey: 'associatedGameID',
-            as: 'evaluation'
+        Game.hasOne(models.GameEvaluation, {
+            foreignKey: {
+                name: 'associatedGameID',
+                allowNull: true
+            },
+            as: 'evaluation',
+            onDelete: "cascade"
         })
     }
 
