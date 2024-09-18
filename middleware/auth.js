@@ -20,7 +20,7 @@ const authorise = async (req, res, next) => {
             return res.status(401).send("ERROR: Access unauthorised.");
         }
 
-        if (Extensions.timeDiffInSeconds(new Date(targetUser.lastLogin), new Date()) > 10800) {
+        if (Extensions.timeDiffInSeconds(new Date(targetUser.lastLogin), new Date()) > 604800) {
             targetUser.authToken = null;
             await targetUser.save();
 
@@ -56,7 +56,7 @@ const authoriseStaff = async (req, res, next) => {
             return res.status(401).send("ERROR: Access unauthorised.");
         }
 
-        if (Extensions.timeDiffInSeconds(new Date(targetUser.lastLogin), new Date()) > 10800) {
+        if (Extensions.timeDiffInSeconds(new Date(targetUser.lastLogin), new Date()) > 604800) {
             targetUser.authToken = null;
             await targetUser.save();
 
