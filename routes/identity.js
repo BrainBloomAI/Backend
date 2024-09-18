@@ -8,56 +8,6 @@ const { Model } = require('sequelize');
 
 const router = express.Router();
 
-/**
- * 
- * @param {Model} user 
- */
-async function computeAggregatePerformance(user) {
-    const games = (await user.getPlayedGames({
-        include: [
-            {
-                model: GameEvaluation,
-                as: "evaluation"
-            }
-        ]
-    })).filter(g => g.evaluation != null);
-
-    // In the event that a user has no evaluations, try to return MINDS evaluation data
-    if (games.length == 0) {
-        if (user.mindsListening && user.mindsEQ && user.mindsTone && user.mindsHelpfulness && user.mindsClarity) {
-            return {
-                listening: user.mindsListening,
-                eq: user.mindsEQ,
-                tone: user.mindsTone,
-                helpfulness: user.mindsHelpfulness,
-                clarity: user.mindsClarity
-            }
-        } else {
-            return null;
-        }
-    }
-
-    var listeningTotal = 0;
-    var eqTotal = 0;
-    var toneTotal = 0;
-    var helpfulnessTotal = 0;
-    var clarityTotal = 0;
-    games.forEach(g => {
-        listeningTotal += g.evaluation.listening;
-        eqTotal += g.evaluation.eq;
-        toneTotal += g.evaluation.tone;
-        helpfulnessTotal += g.evaluation.helpfulness;
-        clarityTotal += g.evaluation.clarity;
-    })
-    return {
-        listening: Math.round((listeningTotal / games.length) * 100) / 100,
-        eq: Math.round((eqTotal / games.length) * 100) / 100,
-        tone: Math.round((toneTotal / games.length) * 100) / 100,
-        helpfulness: Math.round((helpfulnessTotal / games.length) * 100) / 100,
-        clarity: Math.round((clarityTotal / games.length) * 100) / 100
-    }
-}
-
 router.get('/', authorise, async (req, res) => {
     try {
         var user;
@@ -80,7 +30,7 @@ router.get('/', authorise, async (req, res) => {
         const includeLatestEvaluation = req.query.includeLatestEvaluation === 'true' && user.role == "standard";
 
         if (computePerformance) {
-            data.aggregatePerformance = await computeAggregatePerformance(user);
+            data.aggregatePerformance = await Extensions.computeAggregatePerformance(user);
         }
         if (includeLatestEvaluation) {
             const playedGamesWithEvaluations = (await user.getPlayedGames({
@@ -132,7 +82,7 @@ router.get('/aggregatePerformance', authorise, async (req, res) => {
             return res.status(404).send(`ERROR: User not found.`);
         }
 
-        const performance = await computeAggregatePerformance(user);
+        const performance = await Extensions.computeAggregatePerformance(user);
         if (!performance) {
             return res.status(404).send(`ERROR: Not enough data to compute aggregate performance.`);
         }
