@@ -144,34 +144,48 @@ class OpenAIChat {
 
     // Generative Functions
 
-    // Generate an initial message based on a scenario
-    static async generateInitialMessage(scenario) {
+    // Generate an initial message based on a scenario (c - difficulty)
+    static async generateInitialMessage(scenario, difficultyLevel="easy") {
+        let messageLength = difficultyLevel === "easy" ? "Keep the message extremely short, clear, and encouraging. One sentence." :
+                       difficultyLevel === "medium" ? "Keep the message short and clear. Limit to three simple sentences." :
+                       "Keep the message clear, but it's okay to have three sentences with more detail.";
+
         const prompt = `
-        Initiate the conversation with me (${scenario.roles.userRole}) as ${scenario.roles.modelRole}.
+        You are role-playing as ${scenario.roles.modelRole} in a scenario to 
+        teach people with intellectual disabilities how to communicate. Initiate the conversation. 
+        Your responses should help them learn in an easy-to-understand way. 
+        ${messageLength}
+        Use simple words and avoid any complex language. Answer with only the dialogue.
+        
+        ${scenario.roles.modelRole} (You):
         `;
         return await OpenAIChat.prompt(prompt, scenario, true);
     }
 
     // Generate an ideal response to the last message
-    static async generateIdealResponse(conversationHistory, scenario) {
-        const lastSystemMessage = conversationHistory.conversationLog
-            .filter(message => message.by === scenario.roles.modelRole)
-            .slice(-1)[0];  // Get the last system message
+    // static async generateIdealResponse(conversationHistory, scenario) {
+    //     const lastSystemMessage = conversationHistory.conversationLog
+    //         .filter(message => message.by === scenario.roles.modelRole)
+    //         .slice(-1)[0];  // Get the last system message
     
-        const prompt = `
-            You are role-playing as a ${scenario.roles.userRole} in a ${scenario.description.name} scenario. 
-            The ${scenario.roles.modelRole} has said: "${lastSystemMessage.content}".
-            This scenario is for a person with intellectual disabilities to learn appropriate communication in real-life settings.
-            Generate an ideal response that is clear, polite, and relevant to what the ${scenario.roles.modelRole} last said in this context.
-            Limit the length of the response to something that will be easy to repeat.
-            Please provide only the message content without any extra information or formatting, ensure that the response is by ${scenario.roles.userRole}.
-        `;
+    //     const prompt = `
+    //         You are role-playing as a ${scenario.roles.userRole} in a ${scenario.description.name} scenario. 
+    //         The ${scenario.roles.modelRole} has said: "${lastSystemMessage.content}".
+    //         This scenario is for a person with intellectual disabilities to learn appropriate communication in real-life settings.
+    //         Generate an ideal response that is clear, polite, and relevant to what the ${scenario.roles.modelRole} last said in this context.
+    //         Limit the length of the response to something that will be easy to repeat.
+    //         Please provide only the message content without any extra information or formatting, ensure that the response is by ${scenario.roles.userRole}.
+    //     `;
         
-        return await OpenAIChat.prompt(prompt, scenario, true);
-    }
+    //     return await OpenAIChat.prompt(prompt, scenario, true);
+    // }
 
-    // Generate the wrap up message for the conversation
-    static async generateWrapUpMessage(conversationHistory, scenario) {
+    // Generate the wrap up message for the conversation 
+    static async generateWrapUpMessage(conversationHistory, scenario, difficultyLevel="easy") {
+        let messageLength = difficultyLevel === "easy" ? "Keep the message extremely short, clear, and encouraging. One sentence." :
+                       difficultyLevel === "medium" ? "Keep the message short and clear. Limit to two simple sentences." :
+                       "Keep the message clear, but it's okay to have two sentences with more detail.";
+
         const prompt = `
         You are role-playing as a ${scenario.roles.modelRole} in a ${scenario.description.name} scenario where the ${scenario.roles.userRole} (user) is assisting you.
         The goal of this scenario is to simulate a real-life situation to help the user develop communication skills for social inclusion.
@@ -186,7 +200,8 @@ class OpenAIChat {
         As the ${scenario.roles.modelRole}, generate a polite, clear, and socially appropriate response that ends the conversation naturally without repeating information already mentioned. 
         Your response should stay within the context of the conversation, and be easy to understand. 
         Avoid introducing complex language or redundant points, and keep the it short and easy to understand for people with intellectual disabilities.
-        
+        ${messageLength}
+
         Provide response content only without any extra information or formatting.
 
         ${scenario.roles.modelRole} (You):
@@ -197,12 +212,11 @@ class OpenAIChat {
     }
 
     // Generate the next message in conversation based on user's response
-    static async generateNextMessage(conversationHistory, scenario) {
-        // Get the last message from the userRole
-        const lastUserMessage = conversationHistory.conversationLog
-            .filter(message => message.by === scenario.roles.userRole)  // Get all messages by the user
-            .slice(-1)[0];  // Get the last message
-    
+    static async generateNextMessage(conversationHistory, scenario, difficultyLevel="easy") {
+        let messageLength = difficultyLevel === "easy" ? "Keep the message extremely short, clear, and encouraging. One sentence." :
+                       difficultyLevel === "medium" ? "Keep the message short and clear. Limit to two simple sentences." :
+                       "Keep the message clear, but it's okay to have two sentences with more detail.";
+
         const prompt = `
         You are role-playing as a ${scenario.roles.modelRole} in a ${scenario.description.name} scenario where the ${scenario.roles.userRole} (user) is assisting you.
         The goal of this scenario is to simulate a real-life situation to help the user develop communication skills for social inclusion.
@@ -217,6 +231,7 @@ class OpenAIChat {
         Your response should stay within the context of the conversation, encourage continued engagement, and be easy to understand. 
         Avoid introducing complex language or redundant points, and keep the it short and easy to understand for people with intellectual disabilities. 
         Ensure the conversation stays relevant and helpful.
+        ${messageLength}
         
         Provide response content only without any extra information or formatting.
 
@@ -227,16 +242,54 @@ class OpenAIChat {
         return nextMessage;
     }
 
+    // Generate a guided question (c - difficulty)
+    static async generateGuidedQuestion(conversationHistory, scenario, difficultyLevel="easy") {
+        let messageLength = difficultyLevel === "easy" ? "One very short and clear question to help the user." :
+                       difficultyLevel === "medium" ? "Ask one guiding questions to help the user." :
+                       "Ask one clear question, and give a small hint if necessary.";
 
-
-    // Evaluate Functions
-
-    // Evaluate if the user's response is appropriate and relevant
-    static async evaluateResponse(conversationHistory, scenario) {
         const lastSystemMessage = conversationHistory.conversationLog
             .filter(message => message.by === scenario.roles.modelRole)
             .slice(-1)[0];  // Get the last system message
         
+        const prompt = `
+        You are a coach helping a person with intellectual disabilities, the user, respond to a real-life scenario. 
+        The goal is to guide them to answer appropriately by asking a question.
+        
+        The user is role-playing as ${scenario.roles.userRole}, learning to intereact with a ${scenario.roles.modelRole}.
+        The goal of this scenario is to simulate a real-life situation to help the user develop communication skills for social inclusion.
+        The context of this scenario is: "${scenario.description.fullDescription}".
+
+        Here is the conversation history so far:
+        ${conversationHistory.conversationLog.map((message) => {
+            return `${message.by}: ${message.content}`;
+        }).join('\n')}
+        
+        Generate a guiding question that helps the user figure out what to say in response to the last message: "${lastSystemMessage}" by the ${scenario.roles.modelRole}. Given that the user tried saying: "${conversationHistory.targetAttempt}"
+        ${messageLength}
+        Use simple words and avoid any complex words. Be kind.
+        Example: If the model was role-playing as a customer and asked 'Can I order?' your guiding question could be 'Try greeting back and telling them they can order.' 
+    
+        Coach guiding the user (You):
+        `;
+
+        const guidedMessage = await OpenAIChat.prompt(prompt, scenario, true);
+        return guidedMessage;
+    }
+
+    // Evaluate Functions
+
+    // Evaluate if the user's response is appropriate and relevant
+    static async evaluateResponse(conversationHistory, scenario, difficultyLevel="easy") {
+        let leniency = difficultyLevel === "easy" ? "Be very lenient." :
+                   difficultyLevel === "medium" ? "Be moderately lenient." :
+                   "Be less lenient, but still consider it is a person with intellectual disabilities.";
+
+        
+        const lastSystemMessage = conversationHistory.conversationLog
+            .filter(message => message.by === scenario.roles.modelRole)
+            .slice(-1)[0];  // Get the last system message
+    
         const prompt = `
             You are evaluating a response in a ${scenario.description.name} scenario. The scenario is described as: "${scenario.description.fullDescription}".
             
@@ -246,14 +299,15 @@ class OpenAIChat {
             The goal of this scenario is to help the ${scenario.roles.userRole} (the user, who has intellectual disabilities) learn how to communicate appropriately and effectively.
             
             The ${scenario.roles.modelRole} (you) last said: "${lastSystemMessage.content}"
-            The ${scenario.roles.userRole} has responded with: "${conversationHistory.targetAttempt}"
+            The ${scenario.roles.userRole} (user) has responded with: "${conversationHistory.targetAttempt}"
             
-            Consider whether the response from the ${scenario.roles.userRole} is appropriate, relevant, clear, and socially suitable in the context of the entire conversation and scenario.
+            Consider whether the response from the user is appropriate, relevant, clear, and socially suitable in the context of the entire conversation and scenario.
             
             Respond with "true" if the response is appropriate, or "false" if it is not. 
             Ensure your response is based on the overall context and communication goals described.
-            In addition, be more lenient in your evaluation given that the user has intellectual disabilities.
-            Provide only "True" or "False" in your answer.
+            ${leniency} If the user gives a short but appropriate answer, consider it a correct response. 
+            If the response is not completely wrong but only missing details, mark it as correct.
+            Provide only "True" if it’s appropriate or "False" if it’s not.
         `;
         
         const evaluation = await OpenAIChat.prompt(prompt, scenario, true);
@@ -263,22 +317,24 @@ class OpenAIChat {
 
     // Final evaluation for the conversation based on metrics
     static async evaluateConversation(conversationHistory, scenario) {
-    
         const prompt = `
-            Evaluate this conversation between a user (a person with intellectual disabilities) and a ${scenario.roles.modelRole} in a ${scenario.description.tag} scenario.
-            The goal is to teach the user how to respond in real-life social situations to reduce social isolation and promote community inclusion.
+            Evaluate this conversation between a user (a person with intellectual disabilities) and a ${scenario.roles.modelRole} in a ${scenario.description.tag} scenario. 
+            The goal is to teach the user how to respond in real-life social situations to reduce social isolation and promote community inclusion. 
             Provide a balanced evaluation with constructive feedback.
-    
-            Please evaluate the following five metrics, providing an exact percentage score for each:
-            1. Listening and comprehension (did the user understand the customer’s needs?)
-            2. Emotional intelligence (EQ)
-            3. Tone appropriateness (was the user's tone polite and inclusive?)
-            4. Helpfulness (did the user respond helpfully?)
-            5. Clarity (was the response clear and easy to understand?)
+
+            Please evaluate the following five metrics, providing an exact percentage score for each based on the ${scenario.role.userRole} (user) to the ${scenario.role.modelRole} (model). Deduct percentage points for each metric as needed based on the quality of the user's responses:
+
+            1. Listening and comprehension: Did the user understand and respond to the model's needs and statements appropriately?
+            2. Emotional intelligence (EQ): Did the user demonstrate understanding of emotional cues in the conversation with the model?
+            3. Tone appropriateness: Was the user's tone polite, inclusive, and appropriate for the interaction?
+            4. Helpfulness: Did the user provide responses that were helpful and relevant to the model's requests or needs?
+            5. Clarity: Were the user's responses clear, easy to understand, and free of confusion?
+
+            For each metric, assign a percentage starting from 100%. Deduct points for each shortfall observed in the user's response to the models input (e.g., misunderstanding, lack of helpfulness, inappropriate tone, lack of clarity). The total percentage should reflect the quality of the user's response to the conversation overall.
 
             In addition:
-            - Provide a simple, short description of the user’s performance for user feedback.
-            - Provide a detailed description of the user’s performance for staff feedback. Given that the staff are trained at dealing with people with intellectual disabiliteis, include detailed and constructive feedback for the staff to further teach the users for future interactions. Respond as if telling directly to the staff. Return as a paragraph.
+            - Provide a simple, short description of the user's performance for user feedback.
+            - Provide a detailed description of the user's performance for staff feedback. Given that the staff are trained at dealing with people with intellectual disabiliteis, include detailed and constructive feedback for the staff to further teach the users for future interactions. Respond as if telling directly to the staff. Return as a paragraph.
     
             Provide the results separated by a pipe (|) symbol, without spaces or the label, in the following order:
             - Listening and comprehension: [percentage]%
@@ -291,7 +347,7 @@ class OpenAIChat {
 
             Example: 0|0|0|0|0|Sample short description.|Sample very long description. Can be multiple lines.
     
-            Conversation history: 
+            Conversation history:
             ${conversationHistory.conversationLog.map((message) => {
                 return `${message.by === scenario.roles.modelRole ? 'You' : 'User'}: ${message.content}`;
             }).join('\n')}
@@ -327,7 +383,6 @@ class OpenAIChat {
             }
         };
     }
-
 }
 
 
