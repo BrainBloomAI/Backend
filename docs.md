@@ -1224,7 +1224,7 @@ Sample re-try success response:
 ```json
 {
 	"message": "SUCCESS: Great attempt but dialogue unsuccessful. Please retry.",
-	"suggestedAIResponse": "Sample suggested AI response."
+	"guidingAIQuestion": "Sample guiding AI question."
 }
 ```
 

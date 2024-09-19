@@ -81,7 +81,41 @@ async function getFullGame(gameID, json = false, includeDialogues = false, inclu
     }
 }
 
-async function evaluateAttempt(game, attempt) {
+function classifyDifficultLevelForUser(user) {
+    const numericalDomains = [
+        user.mindsListening,
+        user.mindsEQ,
+        user.mindsTone,
+        user.mindsHelpfulness,
+        user.mindsClarity
+    ]
+
+    var easyIndicators = 0;
+    var mediumIndicators = 0;
+    var hardIndicators = 0;
+    for (const domain of numericalDomains) {
+        if (domain <= 60) {
+            easyIndicators += 1;
+        } else if (domain <= 80) {
+            mediumIndicators += 1;
+        } else {
+            hardIndicators += 1;
+        }
+    }
+
+    if (easyIndicators >= 2) {
+        // console.log("CLASSIFICATION: easy")
+        return "easy";
+    } else if (mediumIndicators >= 2) {
+        // console.log("CLASSIFICATION: medium")
+        return "medium";
+    } else {
+        // console.log("CLASSIFICATION: hard")
+        return "hard";
+    }
+}
+
+async function evaluateAttempt(game, attempt, user) {
     const conversationLog = Extensions.prepGameDialogueForAI(game);
     const evaluationInput = {
         conversationLog: conversationLog,
@@ -97,13 +131,13 @@ async function evaluateAttempt(game, attempt) {
             if (evaluationResponse) {
                 return { evaluationResponse };
             } else {
-                const suggestedAIResponse = await OpenAIChat.generateIdealResponse(evaluationInput, Extensions.prepScenarioForAI(game.scenario));
-                if (!suggestedAIResponse || !suggestedAIResponse.content) {
+                const guidingAIQuestion = await OpenAIChat.generateGuidedQuestion(evaluationInput, Extensions.prepScenarioForAI(game.scenario), classifyDifficultLevelForUser(user));
+                if (!guidingAIQuestion || !guidingAIQuestion.content) {
                     Logger.log(`GAME EVALUATEATTEMPT ERROR: Failed to generate suggested AI response for user with ID '${game.userID}'; error: ${err}`);
                     return null;
                 }
 
-                return { evaluationResponse, suggestedAIResponse: suggestedAIResponse.content };
+                return { evaluationResponse, guidingAIQuestion: guidingAIQuestion.content };
             }
         }
     } catch (err) {
@@ -116,19 +150,19 @@ function calculatePointsEarned(game, evaluation) {
     var pointsEarned = 10;
 
     // Give additional points based on evaluation performance
-    if (evaluation.listening >= 80) {
+    if (evaluation.listening >= 65) {
         pointsEarned += 3;
     }
-    if (evaluation.eq >= 80) {
+    if (evaluation.eq >= 65) {
         pointsEarned += 3;
     }
-    if (evaluation.tone >= 80) {
+    if (evaluation.tone >= 65) {
         pointsEarned += 3;
     }
-    if (evaluation.helpfulness >= 80) {
+    if (evaluation.helpfulness >= 65) {
         pointsEarned += 3;
     }
-    if (evaluation.clarity >= 80) {
+    if (evaluation.clarity >= 65) {
         pointsEarned += 3;
     }
 
@@ -416,7 +450,7 @@ router.post('/new', authorise, async (req, res) => {
     // Generate initial AI response (mock data for now)
     var initialPromptResponse;
     try {
-        initialPromptResponse = await OpenAIChat.generateInitialMessage(Extensions.prepScenarioForAI(targetScenario));
+        initialPromptResponse = await OpenAIChat.generateInitialMessage(Extensions.prepScenarioForAI(targetScenario), classifyDifficultLevelForUser(user));
         if (!initialPromptResponse || !initialPromptResponse.content) {
             Logger.log(`GAME NEW ERROR: Failed to generate initial AI response for user with ID '${user.userID}'; error: ${err}`);
             return res.status(500).send(`ERROR: Failed to process request.`);
@@ -622,7 +656,7 @@ router.post('/newDialogue', authorise, async (req, res) => {
     var evaluationData;
     if (req.body.debugSuccess !== true) {
         try {
-            evaluationData = await evaluateAttempt(game, newAttempt);
+            evaluationData = await evaluateAttempt(game, newAttempt, user);
             if (!evaluationData) {
                 Logger.log(`GAME NEWDIALOGUE ERROR: Failed to evaluate attempt for user with ID '${user.userID}'; null value returned.`);
                 return res.status(500).send(`ERROR: Failed to process request.`);
@@ -634,7 +668,7 @@ router.post('/newDialogue', authorise, async (req, res) => {
     }
 
     const responseMode = req.body.debugSuccess === true ? "success" : (evaluationData.evaluationResponse ? "success" : "retry"); // "retry" or "success"
-    const suggestedAIResponse = req.body.debugSuccess === true ? "Sample suggested AI response." : (evaluationData.suggestedAIResponse ? evaluationData.suggestedAIResponse : null);
+    const guidingAIQuestion = req.body.debugSuccess === true ? "Sample guiding AI question." : (evaluationData.guidingAIQuestion ? evaluationData.guidingAIQuestion : null);
 
     // Update attempt information
     if (responseMode == "success") {
@@ -727,7 +761,7 @@ router.post('/newDialogue', authorise, async (req, res) => {
                 try {
                     aiWrapUp = await OpenAIChat.generateWrapUpMessage({
                         conversationLog: Extensions.prepGameDialogueForAI(game)
-                    }, Extensions.prepScenarioForAI(game.scenario));
+                    }, Extensions.prepScenarioForAI(game.scenario), classifyDifficultLevelForUser(user));
                     if (!aiWrapUp || !aiWrapUp.content) {
                         Logger.log(`GAME NEWDIALOGUE ERROR: Failed to generate wrap-up AI response for user with ID '${user.userID}'; error: ${err}`);
                         return res.status(500).send(`ERROR: Failed to process request.`);
@@ -767,7 +801,7 @@ router.post('/newDialogue', authorise, async (req, res) => {
                 try {
                     generatedAIFollowUp = await OpenAIChat.generateNextMessage({
                         conversationLog: Extensions.prepGameDialogueForAI(game)
-                    }, Extensions.prepScenarioForAI(game.scenario));
+                    }, Extensions.prepScenarioForAI(game.scenario), classifyDifficultLevelForUser(user));
                     if (!generatedAIFollowUp || !generatedAIFollowUp.content) {
                         Logger.log(`GAME NEWDIALOGUE ERROR: Failed to generate follow-up AI response for user with ID '${user.userID}'; error: ${err}`);
                         return res.status(500).send(`ERROR: Failed to process request.`);
@@ -809,7 +843,7 @@ router.post('/newDialogue', authorise, async (req, res) => {
         // Prompt client to retry, include suggested AI response for help
         res.send({
             message: "SUCCESS: Great attempt but dialogue unsuccessful. Please retry.",
-            suggestedAIResponse: suggestedAIResponse
+            guidingAIQuestion: guidingAIQuestion
         })
     }
 })

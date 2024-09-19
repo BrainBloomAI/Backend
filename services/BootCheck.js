@@ -31,7 +31,7 @@ class BootCheck {
             }
         }
 
-        let optionalVariables = ["LOGGING_ENABLED", "DEBUG_MODE", "FILEMANAGER_MODE"]
+        let optionalVariables = ["LOGGING_ENABLED", "DEBUG_MODE", "FILEMANAGER_MODE", "OPENAI_ENFORCE_EASY_DIFFICULTY"]
         for (let variable of optionalVariables) {
             if (process.env[variable] !== undefined) {
                 optionalVariables = optionalVariables.filter(v => v !== variable)
