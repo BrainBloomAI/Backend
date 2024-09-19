@@ -136,6 +136,7 @@ Note that responses may not always have the full schema of the object. Based on 
 - `role` - Role of the user. Can be either `standard` or `staff`. Staff can perform additional actions.
 - `points` - Points earned by the user. Default is `0`.
 - `created` - ISO datetime string of account creation date.
+- `profilePicture` - Name of profile picture file. Nullable. Use this to interpolate into `${SERVERURL}/cdn/${profilePicture}` to get the full URL.
 - `lastLogin` - ISO datetime string of last login date. Used to compute sesison expiry. Nullable.
 - `authToken` - Authentication token for the user. Used to authenticate requests. Nullable.
 - `activeGame` - ID of the game the user is currently playing. Nullable.
@@ -151,7 +152,7 @@ Note that responses may not always have the full schema of the object. Based on 
 - `scenarioID` - Primary key.
 - `name` - Name of the scenario.
 - `description` - Description of the scenario.
-- `backgroundImage` - Name of the background image. Use this to interpolate into `${SERVERURL}/public/img/${backgroundImage}` to get the full URL.
+- `backgroundImage` - Name of the background image. Use this to interpolate into `${SERVERURL}/cdn/${backgroundImage}` to get the full URL.
 - `modelRole` - Role of the AI model in the scenario. Helps AI get a perspective when generating dialogues.
 - `userRole` - Role of the user in the scenario. Helps AI get a perspective when responding to dialogues.
 - `created` - ISO datetime string of scenario creation date.
@@ -275,6 +276,7 @@ Sample success response for user accessing their own data with aggregate perform
 	"email": "user@example.com",
 	"role": "standard",
 	"points": 117,
+	"profilePicture": null,
 	"created": "2024-09-17T11:51:42.837Z",
 	"lastLogin": "2024-09-17T11:51:42.837Z",
 	"activeGame": null,
@@ -433,6 +435,20 @@ Sample success response:
 SUCCESS: Account updated successfully.
 ```
 
+## POST `/identity/uploadProfilePicture`
+
+Authorisation required: YES
+
+Updates `profilePicture` attribute to be name of the uploaded file. Name of file submitted does not matter, as it will be renamed to a UUID.
+
+Available request body (**Multi-part form data**) fields:
+- `image` - File to be stored as profile picture.
+
+Sample success response:
+```
+SUCCESS: Profile picture uploaded successfully. File: e24c0b66-7b7d-4315-b312-c5e243b54373.png
+```
+
 ## POST `/identity/changePassword`
 
 Authorisation required: YES
@@ -498,6 +514,7 @@ Sample success response:
 		"userID": "4005c2f4-f0d9-43e6-b0c8-4ef389c189ed",
 		"username": "someuser",
 		"email": "email@example.com",
+		"profilePicture": null,
 		"created": "2024-09-09T09:34:09.029Z",
 		"lastLogin": "2024-09-09T10:21:01.662Z",
 		"activeGame": null,
@@ -530,6 +547,7 @@ Sample success response:
 	"username": "someuser2",
 	"email": "email@example.com",
 	"points": 0,
+	"profilePicture": null,
 	"created": "2024-09-13T11:52:15.806Z",
 	"lastLogin": "2024-09-13T11:52:15.806Z",
 	"activeGame": null,

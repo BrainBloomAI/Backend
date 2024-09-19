@@ -2,9 +2,11 @@ const express = require('express');
 const yup = require('yup');
 const { v4: uuidv4 } = require('uuid');
 const { User, GameEvaluation } = require('../models');
-const { Encryption, Logger, Universal, Extensions } = require('../services');
+const { Encryption, Logger, Universal, Extensions, FileManager } = require('../services');
 const { authorise, authoriseStaff } = require('../middleware/auth');
 const { Model } = require('sequelize');
+const { storeImage } = require('../middleware/storeImage');
+const multer = require('multer');
 
 const router = express.Router();
 
@@ -281,6 +283,61 @@ router.post('/update', authorise, async (req, res) => {
         Logger.log(`IDENTITY UPDATE ERROR: Failed to update account; error: ${err}`);
         return res.status(500).send(`ERROR: Failed to process request.`);
     }
+})
+
+router.post('/uploadProfilePicture', authorise, async (req, res) => {
+    var user;
+    try {
+        user = await User.findByPk(req.userID);
+    } catch (err) {
+        Logger.log(`IDENTITY UPLOADPROFILEPICTURE ERROR: Failed to retrieve user; error: ${err}`);
+        return res.status(500).send(`ERROR: Failed to process request.`);
+    }
+
+    storeImage(req, res, async (err) => {
+        if (err instanceof multer.MulterError) {
+            Logger.log(`IDENTITY UPLOADPROFILEPICTURE ERROR: Image upload error; error: ${err}.`);
+            return res.status(400).send("ERROR: Image upload error.");
+        } else if (err) {
+            Logger.log(`IDENTITY UPLOADPROFILEPICTURE ERROR: Internal server error; error: ${err}.`);
+            return res.status(400).send(`ERROR: ${err}`);
+        } else if (req.file === undefined) {
+            res.status(400).send("UERROR: No file selected.");
+            return;
+        }
+
+        const fileName = req.file.filename;
+
+        // Delete existing picture, if any
+        if (user.profilePicture) {
+            try {
+                const fileDeletion = await FileManager.deleteFile(user.profilePicture);
+                if (fileDeletion !== true) {
+                    Logger.log(`IDENTITY UPLOADPROFILEPICTURE ERROR: Failed to delete existing profile picture; error: ${fileDeletion}.`);
+                }
+            } catch (err) {
+                Logger.log(`IDENTITY UPLOADPROFILEPICTURE ERROR: Failed to delete existing profile picture; error: ${err}.`);
+            }
+        }
+
+        // Save new profile picture
+        try {
+            const fileSave = await FileManager.saveFile(fileName);
+            if (fileSave !== true) {
+                Logger.log(`IDENTITY UPLOADPROFILEPICTURE ERROR: Failed to save profile picture; error: ${fileSave}.`);
+                return res.status(500).send(`ERROR: Failed to process request.`);
+            }
+
+            user.profilePicture = fileName;
+            await user.save();
+        } catch (err) {
+            Logger.log(`IDENTITY UPLOADPROFILEPICTURE ERROR: Failed to save profile picture; error: ${err}.`);
+            return res.status(500).send(`ERROR: Failed to process request.`);
+        }
+
+        Logger.log(`IDENTITY UPLOADPROFILEPICTURE: Profile picture uploaded for user '${user.username}'.`);
+        return res.send(`SUCCESS: Profile picture uploaded successfully. File: ${fileName}`);
+    })
 })
 
 router.post('/changePassword', authorise, async (req, res) => {

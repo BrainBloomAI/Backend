@@ -181,6 +181,7 @@ class Extensions {
             UserEmail: user.email,
             UserRole: user.role,
             UserPoints: user.points,
+            UserProfilePicture: user.profilePicture,
             UserCreated: user.created,
             UserLastLogin: user.lastLogin,
             UserMindsListening: user.mindsListening,
