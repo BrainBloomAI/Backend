@@ -105,6 +105,7 @@ router.get("/export", async (req, res) => {
     try {
         fullSourceJSON = await Promise.all(fullSourceJSON.map(async user => {
             user.banned = user.banned ? "Yes" : "No";
+            user.profilePicture = user.profilePicture ? "Yes" : "No";
 
             user.playedGames.sort((a, b) => {
                 return new Date(a.startedTimestamp) - new Date(b.startedTimestamp)
@@ -264,6 +265,7 @@ Username: ${user.username}
 Email: ${user.email}
 Role: ${user.role}
 Points: ${user.points}
+Profile Picture: ${user.profilePicture}
 Account Created: ${new Date(user.created).toString()}
 Last Login: ${new Date(user.lastLogin).toString()}
 Banned: ${user.banned}
