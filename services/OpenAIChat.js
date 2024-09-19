@@ -244,9 +244,9 @@ class OpenAIChat {
 
     // Generate a guided question (c - difficulty)
     static async generateGuidedQuestion(conversationHistory, scenario, difficultyLevel="easy") {
-        let messageLength = difficultyLevel === "easy" ? "One very short and clear question to help the user." :
-                       difficultyLevel === "medium" ? "Ask one guiding questions to help the user." :
-                       "Ask one clear question, and give a small hint if necessary.";
+        let messageLength = difficultyLevel === "easy" ? "Strictly have only one very short and clear question to help the user." :
+                       difficultyLevel === "medium" ? "Strictly ask one guiding questions to help the user." :
+                       "Ask one general question that will guide the user and give a small hint if necessary.";
 
         const lastSystemMessage = conversationHistory.conversationLog
             .filter(message => message.by === scenario.roles.modelRole)
@@ -271,6 +271,7 @@ class OpenAIChat {
         Example: If the model was role-playing as a customer and asked 'Can I order?' your guiding question could be 'Try greeting back and telling them they can order.' 
     
         Coach guiding the user (You):
+        Try...
         `;
 
         const guidedMessage = await OpenAIChat.prompt(prompt, scenario, true);
@@ -322,7 +323,7 @@ class OpenAIChat {
             The goal is to teach the user how to respond in real-life social situations to reduce social isolation and promote community inclusion. 
             Provide a balanced evaluation with constructive feedback.
 
-            Please evaluate the following five metrics, providing an exact percentage score for each based on the ${scenario.role.userRole} (user) to the ${scenario.role.modelRole} (model). Deduct percentage points for each metric as needed based on the quality of the user's responses:
+            Please evaluate the following five metrics, providing an exact percentage score for each based on the ${scenario.roles.userRole} (user) to the ${scenario.roles.modelRole} (model). Deduct percentage points for each metric as needed based on the quality of the user's responses:
 
             1. Listening and comprehension: Did the user understand and respond to the model's needs and statements appropriately?
             2. Emotional intelligence (EQ): Did the user demonstrate understanding of emotional cues in the conversation with the model?
@@ -349,7 +350,7 @@ class OpenAIChat {
     
             Conversation history:
             ${conversationHistory.conversationLog.map((message) => {
-                return `${message.by === scenario.roles.modelRole ? 'You' : 'User'}: ${message.content}`;
+                return `${message.by}: ${message.content}`;
             }).join('\n')}
         `;
     
