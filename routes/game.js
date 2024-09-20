@@ -94,7 +94,9 @@ function classifyDifficultLevelForUser(user) {
     var mediumIndicators = 0;
     var hardIndicators = 0;
     for (const domain of numericalDomains) {
-        if (domain <= 60) {
+        if (!domain || typeof domain !== "number") {
+            easyIndicators += 1;
+        } else if (domain <= 60) {
             easyIndicators += 1;
         } else if (domain <= 80) {
             mediumIndicators += 1;
