@@ -458,7 +458,6 @@ router.post('/new', authorise, async (req, res) => {
     try {
         initialPromptResponse = await OpenAIChat.generateInitialMessage(Extensions.prepScenarioForAI(targetScenario), classifyDifficultLevelForUser(user));
         if (!initialPromptResponse || !initialPromptResponse.content) {
-            console.log(initialPromptResponse);
             Logger.log(`GAME NEW ERROR: Failed to generate initial AI response for user with ID '${user.userID}'.`);
             return res.status(500).send(`ERROR: Failed to process request.`);
         }
