@@ -264,6 +264,7 @@ class OpenAIChat {
         Generate a guiding question that helps the user figure out what to say in response to the last message: "${lastSystemMessage}" by the ${scenario.roles.modelRole}. Given that the user tried saying: "${conversationHistory.targetAttempt}"
         ${messageLength}
         Use simple words and avoid any complex words. Be kind.
+        Do not wrap your speech in quotation marks unncessarily.
         Example: If the model was role-playing as a customer and asked 'Can I order?' your guiding question could be 'Try greeting back and telling them they can order.' 
     
         Coach guiding the user (You):
