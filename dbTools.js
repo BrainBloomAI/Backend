@@ -1,9 +1,5 @@
-const { v4: uuidv4 } = require('uuid')
 const prompt = require("prompt-sync")({ sigint: true });
-const jwt = require('jsonwebtoken');
-const { sequelize, User } = require('./models');
-const Encryption = require('./services/Encryption');
-const Universal = require('./services/Universal');
+const { sequelize, User, Scenario } = require('./models');
 require('dotenv').config()
 
 async function resetDB() {
@@ -27,8 +23,7 @@ async function softReset() {
     console.log("Soft resetting...")
     try {
         await User.destroy({ where: {} })
-
-        await SystemAnalytics.create({ instanceID: Universal.generateUniqueID() })
+        await Scenario.destroy({ where: {} })
 
         console.log("Tables soft resetted successfully!")
     } catch (err) {

@@ -14,7 +14,7 @@ Logger.setup()
 
 Cache.load();
 
-if (Cache.get("usageLock") == undefined) {
+if (Cache.get("usageLock") === undefined) {
     Cache.set("usageLock", false)
 }
 
@@ -44,7 +44,7 @@ app.set("view engine", "ejs");
 // Top-level middleware
 
 app.use((req, res, next) => {
-    if (!req.originalUrl.startsWith("/path/to/admin/route")) {
+    if (!req.originalUrl.startsWith("/debug")) {
         const usageLock = Cache.get("usageLock") === true;
         if (usageLock) {
             return res.sendStatus(503)

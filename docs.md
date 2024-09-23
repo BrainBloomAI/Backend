@@ -49,6 +49,16 @@ Thus, there are two modes of operation for the system:
 
 The `serviceAccountKey.json` file is a Firebase service account private key. Obtain it by logging onto the Firebase console, navigating to Project Settings > Service Accounts > Generate New Private Key. Rename the file to `serviceAccountKey.json` and place it in the root directory.
 
+## AI Models
+
+By default, the system prefers to use either OpenAI's `gpt-4o-mini` model or Meta's `meta/llama-3.1-8b-instruct` model delivered by NVIDIA NIM. Manipulation of the `OpenAIChat.initialise` line in `index.js` can allow for the use of other models.
+
+To use GPT, set `AI_MODEL` to `gpt` and `OPENAI_API_KEY` to the OpenAI API Key ([get here](https://platform.openai.com)) in the `.env` file.
+
+To use NVIDIA NIM, set `AI_MODEL` to `nvidia` and `OPENAI_API_KEY` to the NVIDIA NIM API Key in the `.env` file.
+
+All this, of course, relies on the `OpenAIChat` sub-system being enabled through `OPENAI_CHAT_ENABLED` being set to `True` in the `.env` file.
+
 ## Database Configuration
 
 You can use the following configuration template (or alternatively copy from `boilerplateConfig.json`) to add/update configurations in your `config.json`.
@@ -1224,7 +1234,7 @@ Sample re-try success response:
 ```json
 {
 	"message": "SUCCESS: Great attempt but dialogue unsuccessful. Please retry.",
-	"suggestedAIResponse": "Sample suggested AI response."
+	"guidingAIQuestion": "Sample guiding AI question."
 }
 ```
 

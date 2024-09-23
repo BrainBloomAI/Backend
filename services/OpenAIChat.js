@@ -1,43 +1,10 @@
 const { default: OpenAI } = require('openai');
-const Cache = require('./Cache');
 require('dotenv').config()
 
 /**
  * OpenAIChat is a class that provides a simple interface to OpenAI's Chat API.
  * 
  * The class provides a method to initialise the OpenAI client, and a method to prompt the model with a message. The class must be initialised before prompt messages are run.
- * 
- * In the prompt method, set `insertAppContext` to `true` to insert the app context before the user message.
- * 
- * Example usage:
- * ```js
- * const initialisationResult = OpenAIChat.initialise();
- * if (initialisationResult !== true) {
- *    console.log(initialisationResult);
- *    process.exit();
- * }
- * 
- * (async () => {
- *    const message = await OpenAIChat.prompt(
- *        "What's MakanMatch?",
- *        true,
- *        [
- *            {
- *                role: "user",
- *                content: "my name is sally!"
- *            },
- *            {
- *                role: "assistant",
- *                content: "Hi Sally! How may I help you?"
- *            }
- *        ]
- *    )
- *    console.log(message.content);
- * })();
- * ```
- * 
- * @method initialise() - Initialises the OpenAI client with the API key from the environment variables. Returns true if successful, or an error message if unsuccessful.
- * @method prompt(message, insertAppContext=false, history=[]) - Prompts the OpenAI model with a message. If `insertAppContext` is true, the app context will be inserted before the user message. The `history` parameter is an array of messages that have been sent in the conversation. Returns the response from the model.
  */
 class OpenAIChat {
     /**
@@ -69,22 +36,34 @@ class OpenAIChat {
         return process.env.OPENAI_CHAT_ENABLED === 'True'
     }
 
-    static initialise(configOptions={ model: "gpt-4o-mini", maxTokens: 512, temperature: 0.5 }) {
+    static initialise(configOptions={ model: process.env.AI_MODEL, maxTokens: 512, temperature: 0.5 }) {
         if (!this.checkPermission()) {
             return "ERROR: OpenAIChat operation permission denied.";
         }
 
         try {
-            this.client = new OpenAI({
+            var configObject = {
                 apiKey: process.env.OPENAI_API_KEY
-            });
+            }
+
+            if (configOptions.model === "nvidia") {
+                configObject.baseURL = "https://integrate.api.nvidia.com/v1"
+            }
+            
+            this.client = new OpenAI(configObject);
         } catch (err) {
             return `ERROR: OpenAIChat failed to initialise. Error; ${err}`;
         }
 
-        if (configOptions.model) {
+        if (configOptions.model === "nvidia") {
+            this.model = "meta/llama-3.1-8b-instruct";
+        } else if (configOptions.model === "gpt" || !configOptions.model) {
+            this.model = "gpt-4o-mini";
+        } else {
             this.model = configOptions.model;
         }
+        console.log(`OPENAICHAT: Model set to '${this.model}'. Ensure appropriate 'OPENAI_API_KEY' is set.`);
+
         if (configOptions.maxTokens) {
             this.maxTokens = configOptions.maxTokens;
         }
@@ -146,7 +125,11 @@ class OpenAIChat {
 
     // Generate an initial message based on a scenario (c - difficulty)
     static async generateInitialMessage(scenario, difficultyLevel="easy") {
-        let messageLength = difficultyLevel === "easy" ? "Keep the message extremely short, clear, and encouraging. One sentence." :
+        if (process.env.OPENAI_ENFORCE_EASY_DIFFICULTY === "True") {
+            difficultyLevel = "easy";
+        }
+
+        var messageLength = difficultyLevel === "easy" ? "Keep the message extremely short, clear, and encouraging. One sentence." :
                        difficultyLevel === "medium" ? "Keep the message short and clear. Limit to three simple sentences." :
                        "Keep the message clear, but it's okay to have three sentences with more detail.";
 
@@ -156,6 +139,7 @@ class OpenAIChat {
         Your responses should help them learn in an easy-to-understand way. 
         ${messageLength}
         Use simple words and avoid any complex language. Answer with only the dialogue.
+        Do not wrap your speech in quotation marks unncessarily.
         
         ${scenario.roles.modelRole} (You):
         `;
@@ -182,7 +166,11 @@ class OpenAIChat {
 
     // Generate the wrap up message for the conversation 
     static async generateWrapUpMessage(conversationHistory, scenario, difficultyLevel="easy") {
-        let messageLength = difficultyLevel === "easy" ? "Keep the message extremely short, clear, and encouraging. One sentence." :
+        if (process.env.OPENAI_ENFORCE_EASY_DIFFICULTY === "True") {
+            difficultyLevel = "easy";
+        }
+
+        var messageLength = difficultyLevel === "easy" ? "Keep the message extremely short, clear, and encouraging. One sentence." :
                        difficultyLevel === "medium" ? "Keep the message short and clear. Limit to two simple sentences." :
                        "Keep the message clear, but it's okay to have two sentences with more detail.";
 
@@ -213,7 +201,11 @@ class OpenAIChat {
 
     // Generate the next message in conversation based on user's response
     static async generateNextMessage(conversationHistory, scenario, difficultyLevel="easy") {
-        let messageLength = difficultyLevel === "easy" ? "Keep the message extremely short, clear, and encouraging. One sentence." :
+        if (process.env.OPENAI_ENFORCE_EASY_DIFFICULTY === "True") {
+            difficultyLevel = "easy";
+        }
+
+        var messageLength = difficultyLevel === "easy" ? "Keep the message extremely short, clear, and encouraging. One sentence." :
                        difficultyLevel === "medium" ? "Keep the message short and clear. Limit to two simple sentences." :
                        "Keep the message clear, but it's okay to have two sentences with more detail.";
 
@@ -244,7 +236,11 @@ class OpenAIChat {
 
     // Generate a guided question (c - difficulty)
     static async generateGuidedQuestion(conversationHistory, scenario, difficultyLevel="easy") {
-        let messageLength = difficultyLevel === "easy" ? "Strictly have only one very short and clear question to help the user." :
+        if (process.env.OPENAI_ENFORCE_EASY_DIFFICULTY === "True") {
+            difficultyLevel = "easy";
+        }
+
+        var messageLength = difficultyLevel === "easy" ? "Strictly have only one very short and clear question to help the user." :
                        difficultyLevel === "medium" ? "Strictly ask one guiding questions to help the user." :
                        "Ask one general question that will guide the user and give a small hint if necessary.";
 
@@ -268,6 +264,7 @@ class OpenAIChat {
         Generate a guiding question that helps the user figure out what to say in response to the last message: "${lastSystemMessage}" by the ${scenario.roles.modelRole}. Given that the user tried saying: "${conversationHistory.targetAttempt}"
         ${messageLength}
         Use simple words and avoid any complex words. Be kind.
+        Do not wrap your speech in quotation marks unncessarily.
         Example: If the model was role-playing as a customer and asked 'Can I order?' your guiding question could be 'Try greeting back and telling them they can order.' 
     
         Coach guiding the user (You):
@@ -282,7 +279,11 @@ class OpenAIChat {
 
     // Evaluate if the user's response is appropriate and relevant
     static async evaluateResponse(conversationHistory, scenario, difficultyLevel="easy") {
-        let leniency = difficultyLevel === "easy" ? "Be very lenient." :
+        if (process.env.OPENAI_ENFORCE_EASY_DIFFICULTY === "True") {
+            leniency = "easy";
+        }
+
+        var leniency = difficultyLevel === "easy" ? "Be very lenient." :
                    difficultyLevel === "medium" ? "Be moderately lenient." :
                    "Be less lenient, but still consider it is a person with intellectual disabilities.";
 
@@ -308,7 +309,7 @@ class OpenAIChat {
             Ensure your response is based on the overall context and communication goals described.
             ${leniency} If the user gives a short but appropriate answer, consider it a correct response. 
             If the response is not completely wrong but only missing details, mark it as correct.
-            Provide only "True" if it’s appropriate or "False" if it’s not.
+            Provide only "True" if it's appropriate or "False" if it's not.
         `;
         
         const evaluation = await OpenAIChat.prompt(prompt, scenario, true);
@@ -333,8 +334,8 @@ class OpenAIChat {
 
             For each metric, assign a percentage starting from 100%. Deduct points for each shortfall observed in the user's response to the models input (e.g., misunderstanding, lack of helpfulness, inappropriate tone, lack of clarity). The total percentage should reflect the quality of the user's response to the conversation overall.
 
-            In addition:
-            - Provide a simple, short description of the user's performance for user feedback.
+            In addition (Remember to be kind):
+            - Provide a simple, short description of the user's performance for user feedback. (Respond as if talking to the user themselve)
             - Provide a detailed description of the user's performance for staff feedback. Given that the staff are trained at dealing with people with intellectual disabiliteis, include detailed and constructive feedback for the staff to further teach the users for future interactions. Respond as if telling directly to the staff. Return as a paragraph.
     
             Provide the results separated by a pipe (|) symbol, without spaces or the label, in the following order:
