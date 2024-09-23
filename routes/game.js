@@ -135,7 +135,7 @@ async function evaluateAttempt(game, attempt, user) {
             } else {
                 const guidingAIQuestion = await OpenAIChat.generateGuidedQuestion(evaluationInput, Extensions.prepScenarioForAI(game.scenario), classifyDifficultLevelForUser(user));
                 if (!guidingAIQuestion || !guidingAIQuestion.content) {
-                    Logger.log(`GAME EVALUATEATTEMPT ERROR: Failed to generate suggested AI response for user with ID '${game.userID}'; error: ${err}`);
+                    Logger.log(`GAME EVALUATEATTEMPT ERROR: Failed to generate suggested AI response for user with ID '${game.userID}'.`);
                     return null;
                 }
 
@@ -417,6 +417,10 @@ router.post('/new', authorise, async (req, res) => {
         return res.status(400).send(`ERROR: One or more required payloads not provided.`);
     }
 
+    if (!OpenAIChat.checkPermission()) {
+        return res.status(503).send('ERROR: AI systems are not available at this time.');
+    }
+
     var targetScenario;
     try {
         if (scenarioID) {
@@ -454,7 +458,7 @@ router.post('/new', authorise, async (req, res) => {
     try {
         initialPromptResponse = await OpenAIChat.generateInitialMessage(Extensions.prepScenarioForAI(targetScenario), classifyDifficultLevelForUser(user));
         if (!initialPromptResponse || !initialPromptResponse.content) {
-            Logger.log(`GAME NEW ERROR: Failed to generate initial AI response for user with ID '${user.userID}'; error: ${err}`);
+            Logger.log(`GAME NEW ERROR: Failed to generate initial AI response for user with ID '${user.userID}'.`);
             return res.status(500).send(`ERROR: Failed to process request.`);
         }
     } catch (err) {
@@ -560,6 +564,10 @@ router.post('/newDialogue', authorise, async (req, res) => {
 
     if (!user.activeGame) {
         return res.status(404).send(`ERROR: No active game found.`);
+    }
+
+    if (!OpenAIChat.checkPermission()) {
+        return res.status(503).send('ERROR: AI systems are not available at this time.');
     }
 
     var game;
@@ -765,7 +773,7 @@ router.post('/newDialogue', authorise, async (req, res) => {
                         conversationLog: Extensions.prepGameDialogueForAI(game)
                     }, Extensions.prepScenarioForAI(game.scenario), classifyDifficultLevelForUser(user));
                     if (!aiWrapUp || !aiWrapUp.content) {
-                        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to generate wrap-up AI response for user with ID '${user.userID}'; error: ${err}`);
+                        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to generate wrap-up AI response for user with ID '${user.userID}'.`);
                         return res.status(500).send(`ERROR: Failed to process request.`);
                     }
                 } catch (err) {
@@ -805,7 +813,7 @@ router.post('/newDialogue', authorise, async (req, res) => {
                         conversationLog: Extensions.prepGameDialogueForAI(game)
                     }, Extensions.prepScenarioForAI(game.scenario), classifyDifficultLevelForUser(user));
                     if (!generatedAIFollowUp || !generatedAIFollowUp.content) {
-                        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to generate follow-up AI response for user with ID '${user.userID}'; error: ${err}`);
+                        Logger.log(`GAME NEWDIALOGUE ERROR: Failed to generate follow-up AI response for user with ID '${user.userID}'.`);
                         return res.status(500).send(`ERROR: Failed to process request.`);
                     }
                 } catch (err) {
@@ -862,6 +870,10 @@ router.post('/requestEvaluation', authorise, async (req, res) => {
     const { gameID } = req.body;
     if (!gameID) {
         return res.status(400).send(`ERROR: One or more required payloads not provided.`);
+    }
+
+    if (!OpenAIChat.checkPermission()) {
+        return res.status(503).send('ERROR: AI systems are not available at this time.');
     }
 
     var game;

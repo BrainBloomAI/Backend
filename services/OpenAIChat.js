@@ -5,10 +5,6 @@ require('dotenv').config()
  * OpenAIChat is a class that provides a simple interface to OpenAI's Chat API.
  * 
  * The class provides a method to initialise the OpenAI client, and a method to prompt the model with a message. The class must be initialised before prompt messages are run.
- * 
- * In the prompt method, set `insertAppContext` to `true` to insert the app context before the user message.
- * @method initialise() - Initialises the OpenAI client with the API key from the environment variables. Returns true if successful, or an error message if unsuccessful.
- * @method prompt(message, insertAppContext=false, history=[]) - Prompts the OpenAI model with a message. If `insertAppContext` is true, the app context will be inserted before the user message. The `history` parameter is an array of messages that have been sent in the conversation. Returns the response from the model.
  */
 class OpenAIChat {
     /**
@@ -40,22 +36,34 @@ class OpenAIChat {
         return process.env.OPENAI_CHAT_ENABLED === 'True'
     }
 
-    static initialise(configOptions={ model: "gpt-4o-mini", maxTokens: 512, temperature: 0.5 }) {
+    static initialise(configOptions={ model: process.env.AI_MODEL, maxTokens: 512, temperature: 0.5 }) {
         if (!this.checkPermission()) {
             return "ERROR: OpenAIChat operation permission denied.";
         }
 
         try {
-            this.client = new OpenAI({
+            var configObject = {
                 apiKey: process.env.OPENAI_API_KEY
-            });
+            }
+
+            if (configOptions.model === "nvidia") {
+                configObject.baseURL = "https://integrate.api.nvidia.com/v1"
+            }
+            
+            this.client = new OpenAI(configObject);
         } catch (err) {
             return `ERROR: OpenAIChat failed to initialise. Error; ${err}`;
         }
 
-        if (configOptions.model) {
+        if (configOptions.model === "nvidia") {
+            this.model = "meta/llama-3.1-8b-instruct";
+        } else if (configOptions.model === "gpt" || !configOptions.model) {
+            this.model = "gpt-4o-mini";
+        } else {
             this.model = configOptions.model;
         }
+        console.log(`OPENAICHAT: Model set to '${this.model}'. Ensure appropriate 'OPENAI_API_KEY' is set.`);
+
         if (configOptions.maxTokens) {
             this.maxTokens = configOptions.maxTokens;
         }
@@ -131,6 +139,7 @@ class OpenAIChat {
         Your responses should help them learn in an easy-to-understand way. 
         ${messageLength}
         Use simple words and avoid any complex language. Answer with only the dialogue.
+        Do not wrap your speech in quotation marks unncessarily.
         
         ${scenario.roles.modelRole} (You):
         `;
@@ -255,6 +264,7 @@ class OpenAIChat {
         Generate a guiding question that helps the user figure out what to say in response to the last message: "${lastSystemMessage}" by the ${scenario.roles.modelRole}. Given that the user tried saying: "${conversationHistory.targetAttempt}"
         ${messageLength}
         Use simple words and avoid any complex words. Be kind.
+        Do not wrap your speech in quotation marks unncessarily.
         Example: If the model was role-playing as a customer and asked 'Can I order?' your guiding question could be 'Try greeting back and telling them they can order.' 
     
         Coach guiding the user (You):
