@@ -417,6 +417,10 @@ router.post('/new', authorise, async (req, res) => {
         return res.status(400).send(`ERROR: One or more required payloads not provided.`);
     }
 
+    if (!OpenAIChat.checkPermission()) {
+        return res.status(503).send('ERROR: AI systems are not available at this time.');
+    }
+
     var targetScenario;
     try {
         if (scenarioID) {
@@ -561,6 +565,10 @@ router.post('/newDialogue', authorise, async (req, res) => {
 
     if (!user.activeGame) {
         return res.status(404).send(`ERROR: No active game found.`);
+    }
+
+    if (!OpenAIChat.checkPermission()) {
+        return res.status(503).send('ERROR: AI systems are not available at this time.');
     }
 
     var game;
@@ -863,6 +871,10 @@ router.post('/requestEvaluation', authorise, async (req, res) => {
     const { gameID } = req.body;
     if (!gameID) {
         return res.status(400).send(`ERROR: One or more required payloads not provided.`);
+    }
+
+    if (!OpenAIChat.checkPermission()) {
+        return res.status(503).send('ERROR: AI systems are not available at this time.');
     }
 
     var game;
