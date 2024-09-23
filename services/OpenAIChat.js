@@ -16,7 +16,7 @@ class OpenAIChat {
      */
     static initialised = false;
     static client;
-    static model = "gpt-4o-mini";
+    static model = "meta/llama-3.1-405b-instruct";
     static maxTokens = 512;
     static temperature = 0.5;
 
@@ -40,14 +40,15 @@ class OpenAIChat {
         return process.env.OPENAI_CHAT_ENABLED === 'True'
     }
 
-    static initialise(configOptions={ model: "gpt-4o-mini", maxTokens: 512, temperature: 0.5 }) {
+    static initialise(configOptions={ model: "meta/llama-3.1-405b-instruct", maxTokens: 512, temperature: 0.5 }) {
         if (!this.checkPermission()) {
             return "ERROR: OpenAIChat operation permission denied.";
         }
 
         try {
             this.client = new OpenAI({
-                apiKey: process.env.OPENAI_API_KEY
+                apiKey: process.env.OPENAI_API_KEY,
+                baseURL: "https://integrate.api.nvidia.com/v1"
             });
         } catch (err) {
             return `ERROR: OpenAIChat failed to initialise. Error; ${err}`;
