@@ -42,7 +42,7 @@ class OpenAIChat {
         }
 
         try {
-            const configObject = {
+            var configObject = {
                 apiKey: process.env.OPENAI_API_KEY
             }
 
