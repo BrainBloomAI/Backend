@@ -16,7 +16,7 @@ class OpenAIChat {
      */
     static initialised = false;
     static client;
-    static model = "meta/llama-3.1-405b-instruct";
+    static model = "meta/llama-3.1-8b-instruct";
     static maxTokens = 512;
     static temperature = 0.5;
 
@@ -132,6 +132,7 @@ class OpenAIChat {
         Your responses should help them learn in an easy-to-understand way. 
         ${messageLength}
         Use simple words and avoid any complex language. Answer with only the dialogue.
+        Do not wrap your speech in quotation marks unncessarily.
         
         ${scenario.roles.modelRole} (You):
         `;
