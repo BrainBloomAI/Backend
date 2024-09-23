@@ -5,10 +5,6 @@ require('dotenv').config()
  * OpenAIChat is a class that provides a simple interface to OpenAI's Chat API.
  * 
  * The class provides a method to initialise the OpenAI client, and a method to prompt the model with a message. The class must be initialised before prompt messages are run.
- * 
- * In the prompt method, set `insertAppContext` to `true` to insert the app context before the user message.
- * @method initialise() - Initialises the OpenAI client with the API key from the environment variables. Returns true if successful, or an error message if unsuccessful.
- * @method prompt(message, insertAppContext=false, history=[]) - Prompts the OpenAI model with a message. If `insertAppContext` is true, the app context will be inserted before the user message. The `history` parameter is an array of messages that have been sent in the conversation. Returns the response from the model.
  */
 class OpenAIChat {
     /**
@@ -16,7 +12,7 @@ class OpenAIChat {
      */
     static initialised = false;
     static client;
-    static model = "meta/llama-3.1-8b-instruct";
+    static model = "gpt-4o-mini";
     static maxTokens = 512;
     static temperature = 0.5;
 
@@ -40,23 +36,34 @@ class OpenAIChat {
         return process.env.OPENAI_CHAT_ENABLED === 'True'
     }
 
-    static initialise(configOptions={ model: "meta/llama-3.1-405b-instruct", maxTokens: 512, temperature: 0.5 }) {
+    static initialise(configOptions={ model: process.env.AI_MODEL, maxTokens: 512, temperature: 0.5 }) {
         if (!this.checkPermission()) {
             return "ERROR: OpenAIChat operation permission denied.";
         }
 
         try {
-            this.client = new OpenAI({
-                apiKey: process.env.OPENAI_API_KEY,
-                baseURL: "https://integrate.api.nvidia.com/v1"
-            });
+            const configObject = {
+                apiKey: process.env.OPENAI_API_KEY
+            }
+
+            if (configOptions.model === "nvidia") {
+                configObject.baseURL = "https://integrate.api.nvidia.com/v1"
+            }
+
+            console.log("Configuring: ")
+            console.log(configObject)
+            this.client = new OpenAI(configObject);
         } catch (err) {
             return `ERROR: OpenAIChat failed to initialise. Error; ${err}`;
         }
 
-        if (configOptions.model) {
-            this.model = configOptions.model;
+        if (configOptions.model === "nvidia") {
+            this.model = "meta/llama-3.1-8b-instruct";
+        } else {
+            this.model = "gpt-4o-mini";
         }
+        console.log(`OPENAICHAT: Model set to '${this.model}'. Ensure appropriate 'OPENAI_API_KEY' is set.`);
+
         if (configOptions.maxTokens) {
             this.maxTokens = configOptions.maxTokens;
         }

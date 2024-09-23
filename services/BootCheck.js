@@ -11,7 +11,7 @@ require('dotenv').config()
  */
 class BootCheck {
     static check() {
-        let requiredVariables = ["SERVER_PORT", "DB_MODE", "OPENAI_CHAT_ENABLED", "OPENAI_API_KEY", "FIRESTORAGE_ENABLED", "STORAGE_BUCKET_URL", "FILEMANAGER_ENABLED", "SUPER_KEY"]
+        let requiredVariables = ["SERVER_PORT", "DB_MODE", "OPENAI_CHAT_ENABLED", "OPENAI_API_KEY", "FIRESTORAGE_ENABLED", "STORAGE_BUCKET_URL", "FILEMANAGER_ENABLED", "SUPER_KEY", "AI_MODEL"]
         for (let variable of requiredVariables) {
             if (process.env[variable] === undefined) {
                 throw new Error(`Environment variable ${variable} is not set.`)
@@ -28,6 +28,10 @@ class BootCheck {
                 if (config === undefined) {
                     throw new Error(`Chosen database configuration ${process.env.DB_CONFIG} is not found in config/config.json.`)
                 }
+            }
+
+            if (variable == "AI_MODEL" && !(["gpt", "nvidia"].includes(process.env[variable]))) {
+                throw new Error(`'AI_MODEL' environment variable must be set to either 'gpt' or 'nvidia'.`)
             }
         }
 
