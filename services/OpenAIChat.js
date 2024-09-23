@@ -49,9 +49,7 @@ class OpenAIChat {
             if (configOptions.model === "nvidia") {
                 configObject.baseURL = "https://integrate.api.nvidia.com/v1"
             }
-
-            console.log("Configuring: ")
-            console.log(configObject)
+            
             this.client = new OpenAI(configObject);
         } catch (err) {
             return `ERROR: OpenAIChat failed to initialise. Error; ${err}`;
@@ -59,8 +57,10 @@ class OpenAIChat {
 
         if (configOptions.model === "nvidia") {
             this.model = "meta/llama-3.1-8b-instruct";
-        } else {
+        } else if (configOptions.model === "gpt" || !configOptions.model) {
             this.model = "gpt-4o-mini";
+        } else {
+            this.model = configOptions.model;
         }
         console.log(`OPENAICHAT: Model set to '${this.model}'. Ensure appropriate 'OPENAI_API_KEY' is set.`);
 
