@@ -347,7 +347,9 @@ class OpenAIChat {
             - User Feedback: [short description]
             - Staff Feedback: [detailed description]
 
-            Example: 0|0|0|0|0|Sample short description.|Sample very long description. Can be multiple lines.
+            Format: |Listening and comprehension percentage|Emotional intelligence percentage|Tone appropriateness percentage|Helpfulness percentage|Clarity percentage|User Feedback (answer like talking to the user).|Staff Feedback|
+
+            Don't forget to put the pipe (|) symbols between each result, very important.
     
             Conversation history:
             ${conversationHistory.conversationLog.map((message) => {
@@ -359,16 +361,20 @@ class OpenAIChat {
         const evaluation = await OpenAIChat.prompt(prompt, scenario, true);
         const evaluationContent = evaluation.content;
 
+        // debug
+        console.log(evaluationContent)
+
         const evaluationData = evaluationContent.split('|');
     
-        const listening = parseFloat(evaluationData[0]);
-        const eq = parseFloat(evaluationData[1]);
-        const tone = parseFloat(evaluationData[2]);
-        const helpfulness = parseFloat(evaluationData[3]);
-        const clarity = parseFloat(evaluationData[4]);
+        const listening = parseFloat(evaluationData[1]);
+        const eq = parseFloat(evaluationData[2]);
+        const tone = parseFloat(evaluationData[3]);
+        const helpfulness = parseFloat(evaluationData[4]);
+        const clarity = parseFloat(evaluationData[5]);
 
-        const userFeedback = evaluationData[5] ? evaluationData[5] : "No user feedback.";
-        const staffFeedback = evaluationData[6] ? evaluationData[6] : "No staff feedback.";
+        const userFeedback = evaluationData[6] ? evaluationData[6] : "No user feedback.";
+        const staffFeedback = evaluationData[7] ? evaluationData[7] : "No staff feedback.";
+        
 
         // Return the extracted data
         return {

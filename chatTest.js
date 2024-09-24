@@ -49,30 +49,40 @@ let conversationHistory = {
             content: 'My friend always goes on hikes'
         }
     ],
-    targetAttempt: 'how about hiking geare'
+    targetAttempt: 'how about hiking gear'
 };
 
 
 async function testScenario(conversationHistory, scenario) {
     // console.log(scenario);
     // console.log('--- Step 1: Generate Initial Message ---');
+    // console.time('timeTaken');
     // const initialMessage = await OpenAIChat.generateInitialMessage(scenario);
+    // console.timeEnd('timeTaken');
     // console.log('Initial message from the customer: ', initialMessage.content);
 
-    console.log('--- Step 2: Generate guided Response to Last Message ---');
-    const guidedques = await OpenAIChat.generateGuidedQuestion(conversationHistory, scenario)
-    console.log('guided response: ', guidedques.content)
+    // console.log('--- Step 2: Generate guided Response to Last Message ---');
+    // console.time('timeTaken');
+    // const guidedques = await OpenAIChat.generateGuidedQuestion(conversationHistory, scenario)
+    // console.timeEnd('timeTaken');
+    // console.log('guided response: ', guidedques.content)
 
-    console.log('--- Step 3: Evaluate User Response ---');
-    const evaluation = await OpenAIChat.evaluateResponse(conversationHistory, scenario);
-    console.log('Is the user response appropriate? ', evaluation);
+    // console.log('--- Step 3: Evaluate User Response ---');
+    // console.time('timeTaken');
+    // const evaluation = await OpenAIChat.evaluateResponse(conversationHistory, scenario);
+    // console.timeEnd('timeTaken');
+    // console.log('Is the user response appropriate? ', evaluation);
 
-    console.log('--- Step 4: Generate Next Message from Customer ---');
-    const nextMessage = await OpenAIChat.generateNextMessage(conversationHistory, scenario);
-    console.log('Next message from the customer: ', nextMessage.content);
+    // console.log('--- Step 4: Generate Next Message from Customer ---');
+    // console.time('timeTaken');
+    // const nextMessage = await OpenAIChat.generateNextMessage(conversationHistory, scenario);
+    // console.timeEnd('timeTaken');
+    // console.log('Next message from the customer: ', nextMessage.content);
 
     console.log('--- Step 5: Evaluate the Conversation ---');
+    console.time('timeTaken');
     const conversationEvaluation = await OpenAIChat.evaluateConversation(conversationHistory, scenario);
+    console.timeEnd('timeTaken');
     console.log('Conversation evaluation: ', conversationEvaluation);
 }
 
