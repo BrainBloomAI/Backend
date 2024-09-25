@@ -58,12 +58,13 @@ class OpenAIChat {
             return `ERROR: OpenAIChat failed to initialise. Error; ${err}`;
         }
 
-        if (configOptions.model === "nvidia") {
+        const inputModel = configOptions.model ? configOptions.model : process.env.AI_MODEL;
+        if (inputModel === "nvidia") {
             this.model = "meta/llama-3.1-8b-instruct";
-        } else if (configOptions.model === "gpt" || !configOptions.model) {
+        } else if (inputModel === "gpt") {
             this.model = "gpt-4o-mini";
         } else {
-            this.model = configOptions.model;
+            this.model = inputModel;
         }
         console.log(`OPENAICHAT: Model set to '${this.model}'. Ensure appropriate 'OPENAI_API_KEY' is set.`);
 
