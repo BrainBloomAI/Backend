@@ -375,7 +375,8 @@ class OpenAIChat {
             - User Feedback: [short description]
             - Staff Feedback: [detailed description]
 
-            Example: 0|0|0|0|0|Sample short description.|Sample very long description. Can be multiple lines.
+            Follow this format: | Listening and comprehension percentage | Emotional intelligence percentage | Tone appropriateness percentage|Helpfulness percentage | Clarity percentage | User Feedback description (answer like talking to the user as a friendly staff) | Staff Feedback description (answer like talking about the user) |
+
     
             Conversation history:
             ${conversationHistory.conversationLog.map((message) => {
@@ -387,16 +388,23 @@ class OpenAIChat {
         const evaluation = await OpenAIChat.prompt(prompt, scenario, true);
         const evaluationContent = evaluation.content;
 
+        // debug
+        // console.log(evaluationContent)
+
         const evaluationData = evaluationContent.split('|');
     
-        const listening = parseFloat(evaluationData[0]);
-        const eq = parseFloat(evaluationData[1]);
-        const tone = parseFloat(evaluationData[2]);
-        const helpfulness = parseFloat(evaluationData[3]);
-        const clarity = parseFloat(evaluationData[4]);
+        const listening = parseFloat(evaluationData[1]);
+        const eq = parseFloat(evaluationData[2]);
+        const tone = parseFloat(evaluationData[3]);
+        const helpfulness = parseFloat(evaluationData[4]);
+        const clarity = parseFloat(evaluationData[5]);
+        
+        const userFeedbackMatch = evaluationContent.match(/User Feedback:([\s\S]*?)(Staff Feedback:|$)/);
+        const staffFeedbackMatch = evaluationContent.match(/Staff Feedback:([\s\S]*)/);
 
-        const userFeedback = evaluationData[5] ? evaluationData[5] : "No user feedback.";
-        const staffFeedback = evaluationData[6] ? evaluationData[6] : "No staff feedback.";
+        const userFeedback = userFeedbackMatch ? userFeedbackMatch[1].trim() : '';
+        const staffFeedback = staffFeedbackMatch ? staffFeedbackMatch[1].trim() : '';
+        
 
         // Return the extracted data
         return {
