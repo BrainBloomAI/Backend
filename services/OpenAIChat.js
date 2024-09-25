@@ -347,9 +347,8 @@ class OpenAIChat {
             - User Feedback: [short description]
             - Staff Feedback: [detailed description]
 
-            Format: |Listening and comprehension percentage|Emotional intelligence percentage|Tone appropriateness percentage|Helpfulness percentage|Clarity percentage|User Feedback (answer like talking to the user).|Staff Feedback|
+            Follow this format: | Listening and comprehension percentage | Emotional intelligence percentage | Tone appropriateness percentage|Helpfulness percentage | Clarity percentage | User Feedback description (answer like talking to the user as a friendly staff) | Staff Feedback description (answer like talking about the user) |
 
-            Don't forget to put the pipe (|) symbols between each result, very important.
     
             Conversation history:
             ${conversationHistory.conversationLog.map((message) => {
@@ -362,7 +361,7 @@ class OpenAIChat {
         const evaluationContent = evaluation.content;
 
         // debug
-        console.log(evaluationContent)
+        // console.log(evaluationContent)
 
         const evaluationData = evaluationContent.split('|');
     
@@ -371,9 +370,12 @@ class OpenAIChat {
         const tone = parseFloat(evaluationData[3]);
         const helpfulness = parseFloat(evaluationData[4]);
         const clarity = parseFloat(evaluationData[5]);
+        
+        const userFeedbackMatch = evaluationContent.match(/User Feedback:([\s\S]*?)(Staff Feedback:|$)/);
+        const staffFeedbackMatch = evaluationContent.match(/Staff Feedback:([\s\S]*)/);
 
-        const userFeedback = evaluationData[6] ? evaluationData[6] : "No user feedback.";
-        const staffFeedback = evaluationData[7] ? evaluationData[7] : "No staff feedback.";
+        const userFeedback = userFeedbackMatch ? userFeedbackMatch[1].trim() : '';
+        const staffFeedback = staffFeedbackMatch ? staffFeedbackMatch[1].trim() : '';
         
 
         // Return the extracted data
