@@ -17,7 +17,7 @@ class OpenAIChat {
     static model = "gpt-4o-mini";
     static maxTokens = 512;
     static temperature = 0.5;
-    static requestTimeout = 5000;
+    static requestTimeout = 10000;
 
     static appContext(scenario) {
         return [
@@ -39,7 +39,7 @@ class OpenAIChat {
         return process.env.OPENAI_CHAT_ENABLED === 'True'
     }
 
-    static initialise(configOptions = { model: process.env.AI_MODEL, maxTokens: 512, temperature: 0.5, requestTimeout: 5000 }) {
+    static initialise(configOptions = { model: process.env.AI_MODEL, maxTokens: 512, temperature: 0.5, requestTimeout: 10000 }) {
         if (!this.checkPermission()) {
             return "ERROR: OpenAIChat operation permission denied.";
         }
@@ -49,7 +49,7 @@ class OpenAIChat {
                 apiKey: process.env.OPENAI_API_KEY
             }
 
-            if (configOptions.model === "nvidia") {
+            if (process.env.AI_MODEL === "nvidia") {
                 configObject.baseURL = "https://integrate.api.nvidia.com/v1"
             }
             
@@ -60,7 +60,7 @@ class OpenAIChat {
 
         const inputModel = configOptions.model ? configOptions.model : process.env.AI_MODEL;
         if (inputModel === "nvidia") {
-            this.model = "meta/llama-3.1-8b-instruct";
+            this.model = "meta/llama-3.1-405b-instruct";
         } else if (inputModel === "gpt") {
             this.model = "gpt-4o-mini";
         } else {
@@ -141,6 +141,7 @@ class OpenAIChat {
         // Run prompt as fast as possible
         const response = await this.createFastestChatCompletion(sanitisedMessages);
         if (typeof response == "string" && response.startsWith("ERROR")) {
+            Logger.log(`OPENAICHAT PROMPT ERROR: ${response}`);
             return response;
         } else if (response.choices) {
             return response.choices[0].message;
@@ -162,8 +163,7 @@ class OpenAIChat {
                        "Keep the message clear, but it's okay to have three sentences with more detail.";
 
         const prompt = `
-        You are role-playing as ${scenario.roles.modelRole} in a scenario to 
-        teach people with intellectual disabilities how to communicate. Initiate the conversation. 
+        You are role-playing as ${scenario.roles.modelRole} in a scenario to teach people with intellectual disabilities how to communicate. Initiate the conversation. 
         Your responses should help them learn in an easy-to-understand way. 
         ${messageLength}
         Use simple words and avoid any complex language. Answer with only the dialogue.
@@ -173,24 +173,6 @@ class OpenAIChat {
         `;
         return await OpenAIChat.prompt(prompt, scenario, true);
     }
-
-    // Generate an ideal response to the last message
-    // static async generateIdealResponse(conversationHistory, scenario) {
-    //     const lastSystemMessage = conversationHistory.conversationLog
-    //         .filter(message => message.by === scenario.roles.modelRole)
-    //         .slice(-1)[0];  // Get the last system message
-    
-    //     const prompt = `
-    //         You are role-playing as a ${scenario.roles.userRole} in a ${scenario.description.name} scenario. 
-    //         The ${scenario.roles.modelRole} has said: "${lastSystemMessage.content}".
-    //         This scenario is for a person with intellectual disabilities to learn appropriate communication in real-life settings.
-    //         Generate an ideal response that is clear, polite, and relevant to what the ${scenario.roles.modelRole} last said in this context.
-    //         Limit the length of the response to something that will be easy to repeat.
-    //         Please provide only the message content without any extra information or formatting, ensure that the response is by ${scenario.roles.userRole}.
-    //     `;
-        
-    //     return await OpenAIChat.prompt(prompt, scenario, true);
-    // }
 
     // Generate the wrap up message for the conversation 
     static async generateWrapUpMessage(conversationHistory, scenario, difficultyLevel="easy") {
@@ -291,13 +273,12 @@ class OpenAIChat {
         
         Generate a guiding question that helps the user figure out what to say in response to the last message: "${lastSystemMessage}" by the ${scenario.roles.modelRole}. Given that the user tried saying: "${conversationHistory.targetAttempt}"
         ${messageLength}
-        Use simple words and avoid any complex words. Be kind.
+        Avoid any complex words or sentence structures so as to not overwhelm the user, since they have intellectual disabilities. Be kind.
         Do not wrap your speech in quotation marks unncessarily.
-        Example: If the model was role-playing as a customer and asked 'Can I order?' your guiding question could be 'Try greeting back and telling them they can order.' 
+        Example: If the model was role-playing as a customer and asked 'Can I order?' your guiding question could be 'Try greeting back and telling them they can order.'
     
-        Coach guiding the user (You):
-        Try...
-        `;
+        Coach guiding the user (You): 
+        Start with "Try..."`;
 
         const guidedMessage = await OpenAIChat.prompt(prompt, scenario, true);
         return guidedMessage;
@@ -374,9 +355,9 @@ class OpenAIChat {
             - Clarity: [percentage]%
             - User Feedback: [short description]
             - Staff Feedback: [detailed description]
+            Answer directly, include no other text/information/semantics.
 
-            Follow this format: | Listening and comprehension percentage | Emotional intelligence percentage | Tone appropriateness percentage|Helpfulness percentage | Clarity percentage | User Feedback description (answer like talking to the user as a friendly staff) | Staff Feedback description (answer like talking about the user) |
-
+            Example: 0|0|0|0|0|Sample short description.|Sample very long description. Can be multiple lines.
     
             Conversation history:
             ${conversationHistory.conversationLog.map((message) => {
@@ -388,23 +369,16 @@ class OpenAIChat {
         const evaluation = await OpenAIChat.prompt(prompt, scenario, true);
         const evaluationContent = evaluation.content;
 
-        // debug
-        // console.log(evaluationContent)
-
         const evaluationData = evaluationContent.split('|');
     
-        const listening = parseFloat(evaluationData[1]);
-        const eq = parseFloat(evaluationData[2]);
-        const tone = parseFloat(evaluationData[3]);
-        const helpfulness = parseFloat(evaluationData[4]);
-        const clarity = parseFloat(evaluationData[5]);
-        
-        const userFeedbackMatch = evaluationContent.match(/User Feedback:([\s\S]*?)(Staff Feedback:|$)/);
-        const staffFeedbackMatch = evaluationContent.match(/Staff Feedback:([\s\S]*)/);
+        const listening = parseFloat(evaluationData[0]);
+        const eq = parseFloat(evaluationData[1]);
+        const tone = parseFloat(evaluationData[2]);
+        const helpfulness = parseFloat(evaluationData[3]);
+        const clarity = parseFloat(evaluationData[4]);
 
-        const userFeedback = userFeedbackMatch ? userFeedbackMatch[1].trim() : '';
-        const staffFeedback = staffFeedbackMatch ? staffFeedbackMatch[1].trim() : '';
-        
+        const userFeedback = evaluationData[5] ? evaluationData[5] : "No user feedback.";
+        const staffFeedback = evaluationData[6] ? evaluationData[6] : "No staff feedback.";
 
         // Return the extracted data
         return {
