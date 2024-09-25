@@ -1,4 +1,5 @@
 const { default: OpenAI } = require('openai');
+const Logger = require('./Logger');
 require('dotenv').config()
 
 /**
@@ -7,14 +8,16 @@ require('dotenv').config()
  * The class provides a method to initialise the OpenAI client, and a method to prompt the model with a message. The class must be initialised before prompt messages are run.
  */
 class OpenAIChat {
+    static initialised = false;
+
     /**
      * @type {OpenAI}
      */
-    static initialised = false;
     static client;
     static model = "gpt-4o-mini";
     static maxTokens = 512;
     static temperature = 0.5;
+    static requestTimeout = 5000;
 
     static appContext(scenario) {
         return [
@@ -36,7 +39,7 @@ class OpenAIChat {
         return process.env.OPENAI_CHAT_ENABLED === 'True'
     }
 
-    static initialise(configOptions={ model: process.env.AI_MODEL, maxTokens: 512, temperature: 0.5 }) {
+    static initialise(configOptions = { model: process.env.AI_MODEL, maxTokens: 512, temperature: 0.5, requestTimeout: 5000 }) {
         if (!this.checkPermission()) {
             return "ERROR: OpenAIChat operation permission denied.";
         }
@@ -70,12 +73,42 @@ class OpenAIChat {
         if (configOptions.temperature) {
             this.temperature = configOptions.temperature;
         }
+        if (configOptions.requestTimeout) {
+            this.requestTimeout = configOptions.requestTimeout;
+        }
 
         this.initialised = true;
         return true;
     }
 
-    static async prompt(message, scenario, insertAppContext=false, history=[]) {
+    static async createFastestChatCompletion(sanitisedMessages, tries = 3) {
+        try {
+            const response = await this.client.chat.completions.create({
+                model: this.model,
+                messages: sanitisedMessages,
+                max_tokens: this.maxTokens,
+                temperature: this.temperature
+            }, {
+                timeout: this.requestTimeout
+            })
+
+            return response;
+        } catch (err) {
+            if (err == "Error: Request timed out.") {
+                tries -= 1
+                if (tries <= 0) {
+                    return "ERROR: Failed to run prompt in reasonable time. Maximum tries exceeded."
+                } else {
+                    Logger.log("OPENAICHAT CREATEFASTESTCHATCOMPLETION WARNING: Request timed out. Retrying...");
+                    return await this.createFastestChatCompletion(sanitisedMessages, tries)
+                }
+            } else {
+                return `ERROR: Failed to run prompt. Error: ${err}`
+            }
+        }
+    }
+
+    static async prompt(message, scenario, insertAppContext = false, history = []) {
         if (!this.checkPermission() || !this.client) {
             return "ERROR: OpenAIChat not initialised properly."
         }
@@ -104,22 +137,16 @@ class OpenAIChat {
             content: message
         })
 
-        // Run prompt
-        try {
-            const response = await this.client.chat.completions.create({
-                model: this.model,
-                messages: sanitisedMessages,
-                max_tokens: this.maxTokens,
-                temperature: this.temperature
-            })
-
+        // Run prompt as fast as possible
+        const response = await this.createFastestChatCompletion(sanitisedMessages);
+        if (typeof response == "string" && response.startsWith("ERROR")) {
+            return response;
+        } else if (response.choices) {
             return response.choices[0].message;
-        } catch (err) {
-            return `ERROR: Failed to run prompt. Error: ${err}`
+        } else {
+            return "ERROR: Failed to run prompt. Malformed response obtained.";
         }
     }
-
-
 
     // Generative Functions
 
