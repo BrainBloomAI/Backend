@@ -51,7 +51,7 @@ The `serviceAccountKey.json` file is a Firebase service account private key. Obt
 
 ## AI Models
 
-By default, the system prefers to use either OpenAI's `gpt-4o-mini` model or Meta's `meta/llama-3.1-8b-instruct` model delivered by NVIDIA NIM. Manipulation of the `OpenAIChat.initialise` line in `index.js` can allow for the use of other models.
+By default, the system prefers to use either OpenAI's `gpt-4o-mini` model or Meta's `meta/llama-3.1-405b-instruct` model delivered by NVIDIA NIM. Manipulation of the `OpenAIChat.initialise` line in `index.js` can allow for the use of other models.
 
 To use GPT, set `AI_MODEL` to `gpt` and `OPENAI_API_KEY` to the OpenAI API Key ([get here](https://platform.openai.com)) in the `.env` file.
 
